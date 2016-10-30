@@ -39,6 +39,7 @@ Version 1.0.4 : Repaired broken source frame rate edit box
 				Changes by 'neuron2'.
 ------*/
 
+#define _LARGEFILE64_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <fcntl.h>
@@ -46,7 +47,7 @@ Version 1.0.4 : Repaired broken source frame rate edit box
 #include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-
+#include <unistd.h>
 
 int check_options(void);
 
