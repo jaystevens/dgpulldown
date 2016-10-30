@@ -1,0 +1,222 @@
+// !$*UTF8*$!
+{
+	089C165DFE840E0CC02AAC07 /* English */ = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1172, 479}}";
+			sepNavSelRange = "{0, 0}";
+			sepNavVisRange = "{0, 45}";
+		};
+	};
+	29B97313FDCFA39411CA2CEA /* Project object */ = {
+		activeBuildConfigurationName = Release;
+		activeExecutable = 5773CA2D110FE1C300C6091E /* DGPulldown */;
+		activeTarget = 8D1107260486CEB800E47090 /* DGPulldown */;
+		addToTargets = (
+			8D1107260486CEB800E47090 /* DGPulldown */,
+		);
+		codeSenseManager = 5773CA41110FE1C900C6091E /* Code sense */;
+		executables = (
+			5773CA2D110FE1C300C6091E /* DGPulldown */,
+		);
+		perUserDictionary = {
+			PBXConfiguration.PBXFileTableDataSource3.PBXFileTableDataSource = {
+				PBXFileTableDataSourceColumnSortingDirectionKey = "-1";
+				PBXFileTableDataSourceColumnSortingKey = PBXFileDataSource_Filename_ColumnID;
+				PBXFileTableDataSourceColumnWidthsKey = (
+					20,
+					994,
+					20,
+					48,
+					43,
+					43,
+					20,
+				);
+				PBXFileTableDataSourceColumnsKey = (
+					PBXFileDataSource_FiletypeID,
+					PBXFileDataSource_Filename_ColumnID,
+					PBXFileDataSource_Built_ColumnID,
+					PBXFileDataSource_ObjectSize_ColumnID,
+					PBXFileDataSource_Errors_ColumnID,
+					PBXFileDataSource_Warnings_ColumnID,
+					PBXFileDataSource_Target_ColumnID,
+				);
+			};
+			PBXPerProjectTemplateStateSaveDate = 286862311;
+			PBXWorkspaceStateSaveDate = 286862311;
+		};
+		perUserProjectItems = {
+			5710148E1117DD7E0090685E /* PBXTextBookmark */ = 5710148E1117DD7E0090685E /* PBXTextBookmark */;
+			571014B91117F8710090685E /* PBXTextBookmark */ = 571014B91117F8710090685E /* PBXTextBookmark */;
+			571014BA1117F8710090685E /* PlistBookmark */ = 571014BA1117F8710090685E /* PlistBookmark */;
+			571014BD1117F8710090685E /* PlistBookmark */ = 571014BD1117F8710090685E /* PlistBookmark */;
+			571014BE1117F8710090685E /* PBXTextBookmark */ = 571014BE1117F8710090685E /* PBXTextBookmark */;
+			571014C71117F8B40090685E /* PBXTextBookmark */ = 571014C71117F8B40090685E /* PBXTextBookmark */;
+			571014D31117FA910090685E /* PBXTextBookmark */ = 571014D31117FA910090685E /* PBXTextBookmark */;
+			571014DD1117FAD10090685E /* PBXTextBookmark */ = 571014DD1117FAD10090685E /* PBXTextBookmark */;
+			577736A2111933280075ADAD /* PBXTextBookmark */ = 577736A2111933280075ADAD /* PBXTextBookmark */;
+			57F47EED1116720A001ECC6F /* PBXBookmark */ = 57F47EED1116720A001ECC6F /* PBXBookmark */;
+		};
+		sourceControlManager = 5773CA40110FE1C900C6091E /* Source Control */;
+		userBuildSettings = {
+		};
+	};
+	5710148E1117DD7E0090685E /* PBXTextBookmark */ = {
+		isa = PBXTextBookmark;
+		fRef = 5773CA47110FE96E00C6091E /* DGPdelegate.m */;
+		name = "DGPdelegate.m: 63";
+		rLen = 0;
+		rLoc = 2103;
+		rType = 0;
+		vrLen = 1053;
+		vrLoc = 1769;
+	};
+	571014B91117F8710090685E /* PBXTextBookmark */ = {
+		isa = PBXTextBookmark;
+		fRef = 089C165DFE840E0CC02AAC07 /* English */;
+		name = "InfoPlist.strings: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 45;
+		vrLoc = 0;
+	};
+	571014BA1117F8710090685E /* PlistBookmark */ = {
+		isa = PlistBookmark;
+		fRef = 8D1107310486CEB800E47090 /* Info.plist */;
+		fallbackIsa = PBXBookmark;
+		isK = 0;
+		kPath = (
+			CFAppleHelpAnchor,
+		);
+		name = /Users/riveraa/Projects/Objc/DGPulldown3/Info.plist;
+		rLen = 0;
+		rLoc = 2147483647;
+	};
+	571014BD1117F8710090685E /* PlistBookmark */ = {
+		isa = PlistBookmark;
+		fRef = 8D1107310486CEB800E47090 /* Info.plist */;
+		fallbackIsa = PBXBookmark;
+		isK = 0;
+		kPath = (
+			CFAppleHelpAnchor,
+		);
+		name = /Users/riveraa/Projects/Objc/DGPulldown3/Info.plist;
+		rLen = 0;
+		rLoc = 2147483647;
+	};
+	571014BE1117F8710090685E /* PBXTextBookmark */ = {
+		isa = PBXTextBookmark;
+		fRef = 089C165DFE840E0CC02AAC07 /* English */;
+		name = "InfoPlist.strings: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 45;
+		vrLoc = 0;
+	};
+	571014C71117F8B40090685E /* PBXTextBookmark */ = {
+		isa = PBXTextBookmark;
+		fRef = 5773CA46110FE96E00C6091E /* DGPdelegate.h */;
+		name = "DGPdelegate.h: 36";
+		rLen = 0;
+		rLoc = 982;
+		rType = 0;
+		vrLen = 793;
+		vrLoc = 238;
+	};
+	571014D31117FA910090685E /* PBXTextBookmark */ = {
+		isa = PBXTextBookmark;
+		fRef = 5773CA46110FE96E00C6091E /* DGPdelegate.h */;
+		name = "DGPdelegate.h: 36";
+		rLen = 0;
+		rLoc = 953;
+		rType = 0;
+		vrLen = 731;
+		vrLoc = 593;
+	};
+	571014DD1117FAD10090685E /* PBXTextBookmark */ = {
+		isa = PBXTextBookmark;
+		fRef = 5773CA47110FE96E00C6091E /* DGPdelegate.m */;
+		name = "DGPdelegate.m: 57";
+		rLen = 0;
+		rLoc = 1856;
+		rType = 0;
+		vrLen = 826;
+		vrLoc = 1188;
+	};
+	5773CA2D110FE1C300C6091E /* DGPulldown */ = {
+		isa = PBXExecutable;
+		activeArgIndices = (
+		);
+		argumentStrings = (
+		);
+		autoAttachOnCrash = 1;
+		breakpointsEnabled = 0;
+		configStateDict = {
+		};
+		customDataFormattersEnabled = 1;
+		debuggerPlugin = GDBDebugging;
+		disassemblyDisplayState = 0;
+		dylibVariantSuffix = "";
+		enableDebugStr = 1;
+		environmentEntries = (
+		);
+		executableSystemSymbolLevel = 0;
+		executableUserSymbolLevel = 0;
+		libgmallocEnabled = 0;
+		name = DGPulldown;
+		savedGlobals = {
+		};
+		sourceDirectories = (
+		);
+	};
+	5773CA40110FE1C900C6091E /* Source Control */ = {
+		isa = PBXSourceControlManager;
+		fallbackIsa = XCSourceControlManager;
+		isSCMEnabled = 0;
+		scmConfiguration = {
+			repositoryNamesForRoots = {
+				"" = "";
+			};
+		};
+	};
+	5773CA41110FE1C900C6091E /* Code sense */ = {
+		isa = PBXCodeSenseManager;
+		indexTemplatePath = "";
+	};
+	5773CA46110FE96E00C6091E /* DGPdelegate.h */ = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1172, 2142}}";
+			sepNavSelRange = "{953, 0}";
+			sepNavVisRange = "{593, 731}";
+		};
+	};
+	5773CA47110FE96E00C6091E /* DGPdelegate.m */ = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1172, 16694}}";
+			sepNavSelRange = "{2861, 0}";
+			sepNavVisRange = "{2587, 794}";
+			sepNavWindowFrame = "{{15, 314}, {1129, 859}}";
+		};
+	};
+	577736A2111933280075ADAD /* PBXTextBookmark */ = {
+		isa = PBXTextBookmark;
+		fRef = 5773CA47110FE96E00C6091E /* DGPdelegate.m */;
+		name = "DGPdelegate.m: 81";
+		rLen = 0;
+		rLoc = 2861;
+		rType = 0;
+		vrLen = 794;
+		vrLoc = 2587;
+	};
+	57F47EED1116720A001ECC6F /* PBXBookmark */ = {
+		isa = PBXBookmark;
+		fRef = 57F47ED511167007001ECC6F /* movie.icns */;
+	};
+	8D1107260486CEB800E47090 /* DGPulldown */ = {
+		activeExec = 0;
+		executables = (
+			5773CA2D110FE1C300C6091E /* DGPulldown */,
+		);
+	};
+}

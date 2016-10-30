@@ -1,0 +1,7 @@
+//
+// Prefix header for all source files of the 'DGPulldown' target in the 'DGPulldown' project
+//
+
+#ifdef __OBJC__
+    #import <Cocoa/Cocoa.h>
+#endif

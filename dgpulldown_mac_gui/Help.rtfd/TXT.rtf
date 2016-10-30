@@ -1,0 +1,113 @@
+{\rtf1\ansi\ansicpg1252\cocoartf949\cocoasubrtf540
+{\fonttbl\f0\froman\fcharset238 Times-Roman;\f1\fswiss\fcharset0 Helvetica;\f2\fnil\fcharset238 Monaco;
+}
+{\colortbl;\red255\green255\blue255;}
+{\*\listtable{\list\listtemplateid1\listhybrid{\listlevel\levelnfc0\levelnfcn0\leveljc2\leveljcn2\levelfollow0\levelstartat1\levelspace360\levelindent0{\*\levelmarker \{decimal\}.}{\leveltext\leveltemplateid0\'02\'05.;}{\levelnumbers\'01;}}{\listname ;}\listid1}}
+{\*\listoverridetable{\listoverride\listid1\listoverridecount0\ls1}}
+{\info
+{\title Help}}\vieww13980\viewh22580\viewkind0
+\deftab720
+\pard\pardeftab720\sa320\qc
+
+\f0\b\fs48 \cf0 DGPulldown for Mac OSX 1.0.10-m\
+\pard\pardeftab720\sa300\qc
+
+\fs24 \cf0 by Armando I. Rivera (AIR)\
+Based on DGPulldown 1.0.10 for Windows by Donald A. Graft ('neuron2'), 'Jetlag', and 'timecop'\
+\pard\pardeftab720\sa320\qc
+
+\i\fs20 \cf0 \'a0
+\fs26 Help file written by 'neuron2'\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\qc\pardirnatural
+
+\f1\i0\b0\fs24 \cf0 {{\NeXTGraphic Picture 4.png \width12938 \height13018
+}¬}
+\f0 \
+\pard\pardeftab720\sa240\ql\qnatural
+
+\f2\fs22 \cf0 This program takes a progressive MPEG2 video elementary stream, and applies pulldown flags to change it to a different legal MPEG2 frame rate. \uc0\u8232 The great idea for using irregular pulldown patterns for PAL to NTSC conversion was first suggested by 'Xesdeeni'.\
+After loading an input file, the default output file will be set to be in the same directory as the input file and will have the same name with ".pulldown.m2v" appended. This is usually not the fastest way to go. It's usually better to change the destination path for the output file to be on a different physical disk drive.\
+Your content must be progressive. If it is interlaced, you can deinterlace it first before MPEG2 encoding.\
+Usage Notes:\
+The output frame rate must be a legal MPEG2 rate, as listed on the program's GUI dialog. The input frame rate can be freely chosen, but it must be greater than or equal to 2/3 of the output frame rate, and less than or equal to the output frame rate.\
+The input frame rate edit box accepts two methods for specifying the frame rate:\
+\pard\tx220\tx720\pardeftab720\li720\fi-720\ql\qnatural
+\ls1\ilvl0\cf0 {\listtext	1.	}Numerical -- You may specify a floating point number with up to 6 decimal places.\
+{\listtext	2.	}Fractional -- You may specify a fraction, i.e., N/M, where N and M are both integers. Examples\uc0\u8232 23.975444 16.6667 24000/1001 50/3 \u8232 \u8232 \
+\pard\pardeftab720\sa240\ql\qnatural
+\cf0 Note that when applying pulldown for authoring a DVD, as for PAL->NTSC conversion, you have to ensure that the GOP size is not too large after pulldown. There is a text file included in this distribution with further details. For complete safety, encode your MPEG2 file with a GOP size of 12 or less.
+\f0\fs24 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardeftab720\ql\qnatural\pardirnatural
+\cf0 \
+\pard\pardeftab720\sa240\ql\qnatural
+
+\f2\fs22 \cf0 \
+\ul "No change"\ulnone \
+\pard\pardeftab720\ql\qnatural
+\cf0         This option reads the framerate from the input file and \
+        uses it to generate the timecode. TFF/RFF flags are not\
+        touched.\
+\pard\pardeftab720\sa240\ql\qnatural
+\cf0 \
+\ul "Top field first"\ulnone \
+\pard\pardeftab720\ql\qnatural
+\cf0         This option when checked will generate a Top Field First\
+        (TFF) output stream. When unchecked, a Bottom Field First\
+        (BFF) stream is generated.\
+\pard\pardeftab720\sa240\ql\qnatural
+\cf0 \
+\ul "Set timecodes"\ulnone \
+\pard\pardeftab720\ql\qnatural
+\cf0         This option when checked will re-write the GOP timecodes as\
+        defined by the "Set drop frames" and "Set start time" options\
+        (see below).\
+\pard\pardeftab720\sa240\ql\qnatural
+\cf0 \
+\ul "Write timecode to text file"\ulnone \
+\pard\pardeftab720\ql\qnatural
+\cf0         This option when checked will write the timecode of the\
+        output to a file with the same name as the output but with \
+        ".timecode.txt" appended.\
+\pard\pardeftab720\sa240\ql\qnatural
+\cf0 \
+\ul "Set drop frames"\ulnone \
+\pard\pardeftab720\ql\qnatural
+\cf0         The "Set drop frames" check box has three states. The default\
+        startup state is grayed. This means that DGPulldown determines\
+        automatically whether it is required, based on the output framerate.\
+        Integer rates get non-drop, non-integer rates get drop. You can\
+        override that decision by clicking it to the checked or unchecked\
+        state, but you shouldn't do this unless you have a very good reason.\
+\pard\pardeftab720\sa240\ql\qnatural
+\cf0 \
+\ul "Set start time"\ulnone \
+\pard\pardeftab720\ql\qnatural
+\cf0         When this setting is NOT checked the program will get the\
+        starting timecode from the input file. This is probably the\
+        best behavior. If you feel like changing it, check this\
+        and input the hours, minutes, seconds, and frames of the\
+        desired starting timecode in the associated boxes.\
+        Note: When conversion starts, the actual starting time used\
+        is inserted into the boxes for the user to see, regardless\
+        of how this option was set.\
+\pard\pardeftab720\sa240\ql\qnatural
+\cf0 \
+\ul "No output"\ulnone \
+\pard\pardeftab720\ql\qnatural
+\cf0         This option when checked will disable writing to the output\
+        file. This is useful for testing the timecode.\
+\pard\pardeftab720\sa240\ql\qnatural
+\cf0 \
+\ul "Modify file in place"\ulnone \
+\pard\pardeftab720\ql\qnatural
+\cf0         This option when checked causes DGPulldown to modify the input\
+        file instead of creating a new output file. This can save disk space\
+        and is about 30% faster.\
+        WARNING: Be careful when using this option because if\
+        there is an interruption of the process, your input file can be\
+        left in an inconsistent and possibly unusable state.\
+\pard\pardeftab720\sa240\ql\qnatural
+\cf0 \
+Note that if the custom rate conversion is selected, and if the source rate is specified as equal to the destination rate, then all pulldown is removed and the stream is flagged as having a rate equal to the specified destination rate.
+\f0\fs24 \
+}
