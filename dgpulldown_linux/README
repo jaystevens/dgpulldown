@@ -1,0 +1,27 @@
+Dear User:
+
+Included here is a Linux and Mac OSX version of dgpulldown.  Dgpulldown
+was created by Donald A Graft under the GNU GPL License 2.  This version
+is based on Version 1.0.11.  Modifications include removal of Windows
+specific code as well as the features for rewriting a file in place and
+for dumping the time code.  A new option -interlaced has been added to
+allow changing the field dominance of interlaced source.  This option
+should not be used in conjuction with any of pulldown options.
+
+To flag an interlaced m2v file as top field first use the command
+
+    dgpulldown input.m2v -interlaced -o output.m2v
+
+to flag an interlaced m2v file as bottom field first use the command
+
+    dgpulldown input.m2v -interlaced -bff -o output.m2v
+
+Comments on the modification can be sent to video@renomath.org.  Much
+thanks goes to Donald Graft 
+
+    http://neuron2.net/dgpulldown/dgpulldown.html
+
+who wrote the original code and released it under the GNU GPL.
+
+Sincerely,
+Eric

@@ -1,0 +1,52 @@
+The GOP size is a count of physical frames in the bitstream and is independent of the display duration of the frames in the GOP. DVD limits the GOP sizes to 18 for NTSC and 15 for PAL, but the count is actual encoded frames, not the display duration of those frames. 
+
+There is a case however, with 23.976 pulldown and 15 frame GOP's, where a set of GOP's may be encoded such that they cannot be made DVD compliant. Use 12 frame GOP's to avoid the problem. 
+
+DVD specifies that the stream be broken into VOBU's, a VOBU starts with a GOP and may contain more than 1 GOP but the display duration of the VOBU must be >= 0.4 seconds and <= 1.0 seconds (except for the last VOBU which may be <= 1.2 seconds). 
+
+If a 15 frame GOP is created followed by a 9 frame GOP (say because of a chapter point) and then followed by another 15 frame GOP, the 9 frame GOP cannot be combined into a VOBU and would be considered to have an illegal length. 
+
+The 9 frame GOP display period is 367.0333... or 383.71666... ms (4 or 5 frames will have repeat first field = 1), too short to be in a VOBU by itself so it has to be combined with the previous or next GOP to form a VOBU. 
+
+The 15 frame GOP's display period is 617.28333... or 633.9666... ms (7 or 8 frames will have repeat first field = 1). 
+
+Normally you would have either: 
+
+15 frame GOP: 3 2 3 2 3 2 3 2 3 2 3 2 3 2 3 (8 extra fields) 
+9 frame GOP: 2 3 2 3 2 3 2 3 2 (4 extra fields) 
+15 frame GOP: 3 2 3 2 3 2 3 2 3 2 3 2 3 2 3 (8 extra fields) 
+
+633.9666 + 367.0333 = 1000.999... too large! 
+
+or 
+
+15 frame GOP: 2 3 2 3 2 3 2 3 2 3 2 3 2 3 2 (7 extra fields) 
+9 frame GOP: 3 2 3 2 3 2 3 2 3 (5 extra fields) 
+15 frame GOP: 2 3 2 3 2 3 2 3 2 3 2 3 2 3 2 (7 extra fields) 
+
+617.28333 + 383.71666 = 1000.999... too large! 
+
+Our encoder is supposed to protect against generating this kind of GOP set, does the problem occur with output from the MainConcept encoder? 
+
+Regards, 
+Brent Beyeler
+
+------------------------------------------------------------------------------------------------------------------------------------
+
+Originally Posted by bigotti5:
+ 
+The GOP length restriction is based on displayed frames - not encoded frames.
+
+Two max length GOPs (presentation period) has to fit within 1,2 seconds. 
+
+Two 15 frame encoded GOPs then pulldowned will display for 1,3 seconds 
+
+15 x 1.25 (the pulldown) = 18.75 gops = 38 fields = 38/29.97 (display time) = 1.26 seconds
+
+Quote:
+Originally Posted by From Philips verifier manual 
+(ref. DVD-3 5.1.1)
+A VOBU represents a presentation period of at least 0.4 seconds.
+A VOBU except the last VOBU of a cell shall represent a presentation period of at most 1 second. The last VOBU of a cell shall represent a presentation period of at most 1.2 seconds. 
+
+Meaning even though some "better" players handle these files fine, the DVD spec is done by displayed frames, so you are technically not DVD compliant over 12 GOPs w/ 23.976 pulldown video.
