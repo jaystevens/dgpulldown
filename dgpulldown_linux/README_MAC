@@ -1,0 +1,3 @@
+mac does not have lseek64, so use lseek instead.
+
+to apply patch for mac: patch < mac.patch
