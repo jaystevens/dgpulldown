@@ -304,7 +304,7 @@ int process(int notused)
 // read ahead (write behind) by using negative offsets.
 // Currently, it's only used for the 4-byte timecode.
 // The offset is ignored when not doing in-place operation.
-inline void put_byte(int offset, unsigned char val)
+void put_byte(int offset, unsigned char val)
 {
 	long int save, backup;
 	fwrite(&val, 1, 1, wfp);
@@ -313,7 +313,7 @@ inline void put_byte(int offset, unsigned char val)
 // Get a byte from the stream. We do our own buffering
 // for in-place operation, otherwise we rely on the
 // operating system.
-inline unsigned char get_byte(void)
+unsigned char get_byte(void)
 {
 	unsigned char val;
 	{
