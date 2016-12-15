@@ -48,8 +48,10 @@ Version 1.0.4 : Repaired broken source frame rate edit box
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <time.h>
 
 int check_options(void);
+unsigned int timeGetTime(void);
 
 char input_file[2048];
 char output_file[2048];
@@ -73,10 +75,7 @@ char OutputRate[255];
 unsigned int TimeCodes = 1;
 unsigned int DropFrames = 2;
 unsigned int StartTime = 0;
-char HH[255] = { 0 }, MM[255] = {
-0}, SS[255] = {
-0}, FF[255] = {
-0};
+char HH[255] = { 0 }, MM[255] = {0}, SS[255] = {0}, FF[255] = {0};
 
 int tff = 1;
 static int output_m2v = 1;
@@ -86,6 +85,11 @@ int interlaced = 0;
 int main(int argc, char **argv)
 {
 	int i;
+
+    // disable buffering on stdout and stderr
+    setbuf(stderr, NULL);
+    setbuf(stdout, NULL);
+
 	if (argc > 1) {
 		CliActive = 1;
 		Rate = CONVERT_NO_CHANGE;
@@ -234,6 +238,9 @@ int set_tc;
 
 char stats[255];
 char done[255];
+unsigned int Start, Now, Elapsed;
+unsigned int LastProgress = 0;
+unsigned int percent = 0;
 
 int process(int notused)
 {
@@ -244,6 +251,7 @@ int process(int notused)
 	minute = 0;
 	hour = 0;
 	drop_frame = 0;
+    Start = timeGetTime();
 
 	// Open the input file.
 
@@ -300,6 +308,16 @@ int process(int notused)
 	return 0;
 }
 
+// emulate windows timeGetTime sort of, returns seconds
+unsigned int timeGetTime(void)
+{
+    time_t s;
+    struct timespec spec;
+    clock_gettime(CLOCK_REALTIME, &spec);
+    s = spec.tv_sec;
+    return s;
+}
+
 // Write a value in the file at an offset relative
 // to the last read character. This allows for
 // read ahead (write behind) by using negative offsets.
@@ -319,13 +337,30 @@ unsigned char get_byte(void)
 	unsigned char val;
 	{
 		if (fread(&val, 1, 1, fp) != 1) {
-			fprintf(stderr, "...No more data\n");
+			fprintf(stderr, "Done.\n");
 			fclose(fp);
 			if (output_m2v)
 				fclose(wfp);
 			exit(7);
 		}
 	}
+    // progress output, only once per second
+    data_count++;
+    Now = timeGetTime();
+	if (((Now - LastProgress) >= 1) && (size > 0))
+	{
+		if (Now >= Start)
+			Elapsed = Now - Start;
+		else
+			Elapsed = (4294967295 - Start) + Now + 1;
+		LastProgress = Now;
+		percent = data_count * 100 / size;
+		//sprintf(stats, "%02d %7d input frames : output time %02d:%02d:%02d%c%02d @ %6.3f [elapsed %d sec]\n",
+		//	percent, "%", F, hour, minute, sec, (drop_frame ? ',' : '.'), pict, tfps, Elapsed / 1000);
+		fprintf(stderr, "%02d%% %7d input frames : output time %02d:%02d:%02d%c%02d @ %6.3f [elapsed %d sec]\n",
+			percent, F, hour, minute, sec, (drop_frame ? ',' : '.'), pict, tfps, Elapsed);
+	}
+
 	return val;
 }
 
