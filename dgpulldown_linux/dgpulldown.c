@@ -320,10 +320,11 @@ int process(int notused)
 unsigned int timeGetTime(void)
 {
     time_t s;
-    struct timespec spec;
     #ifdef __MACH__  // MacOS does not have clock_gettime, use gettimeofday instead
+    struct timeval spec;
     gettimeofday(&spec, NULL);
     #else  // regular linux clock_gettime
+    struct timespec spec;
     clock_gettime(CLOCK_REALTIME, &spec);
     #endif
     s = spec.tv_sec;
