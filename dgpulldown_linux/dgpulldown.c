@@ -50,6 +50,10 @@ Version 1.0.4 : Repaired broken source frame rate edit box
 #include <unistd.h>
 #include <time.h>
 
+#ifdef __MACH__  // MacOS needs gettimeofday
+#include <sys/time.h>
+#endif
+
 int check_options(void);
 unsigned int timeGetTime(void);
 
@@ -278,7 +282,11 @@ int process(int notused)
 
     // Get the file size.
     fd = open(input_file, O_RDONLY);
+    #ifdef __MACH__  // MacOS does not have lseek64
+    size = lseek(fd, 0, SEEK_END);
+    #else  // Linux use lseek64
     size = lseek64(fd, 0, SEEK_END);
+    #endif
     close(fd);
 
     // Make sure all the options are ok
@@ -313,7 +321,11 @@ unsigned int timeGetTime(void)
 {
     time_t s;
     struct timespec spec;
+    #ifdef __MACH__  // MacOS does not have clock_gettime, use gettimeofday instead
+    gettimeofday(&spec, NULL);
+    #else  // regular linux clock_gettime
     clock_gettime(CLOCK_REALTIME, &spec);
+    #endif
     s = spec.tv_sec;
     return s;
 }
