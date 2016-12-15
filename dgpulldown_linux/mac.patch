@@ -1,11 +1,11 @@
---- dgpulldown.c	2016-10-30 05:18:06.000000000 -0700
-+++ dgpulldown_mac.c	2016-10-30 05:17:58.000000000 -0700
-@@ -270,7 +270,7 @@
+--- dgpulldown.c	2016-12-15 05:48:16.269674224 -0800
++++ dgpulldown_mac.c	2016-12-15 05:49:56.432883614 -0800
+@@ -278,7 +278,7 @@
  
- 	// Get the file size.
- 	fd = open(input_file, O_RDONLY);
--	size = lseek64(fd, 0, SEEK_END);
-+	size = lseek(fd, 0, SEEK_END);
- 	close(fd);
+     // Get the file size.
+     fd = open(input_file, O_RDONLY);
+-    size = lseek64(fd, 0, SEEK_END);
++    size = lseek(fd, 0, SEEK_END);
+     close(fd);
  
- 	// Make sure all the options are ok
+     // Make sure all the options are ok
