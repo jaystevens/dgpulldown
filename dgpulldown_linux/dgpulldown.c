@@ -185,7 +185,7 @@ void helpText(void)
 		"-o filename            File name for output file, if omitted, the name will be \"*.pulldown.m2v\".\n"
 		"-srcfps rate           Rate is any float fps value, e.g., \"23.976\" (default) or a fraction, e.g., \"30000/1001\"\n"
 		"-destfps rate          Rate is any valid mpeg2 float fps value, e.g., \"29.97\" (default).\n"
-		"                       Valid rates: 23.976, 24, 25, 23.97, 30, 50, 59.94, 60\n"
+		"                       Valid rates: 23.976, 24, 25, 29.97, 30, 50, 59.94, 60\n"
 		"-nom2v                 Do not create an output m2v file.\n"
 		//"-inplace               Modify the input file instead of creating an output file. [WINDOWS ONLY]\n"
 		//"-dumptc                Dump timecodes to \"*.timecodes.txt\". [WINDOWS ONLY]\n"
