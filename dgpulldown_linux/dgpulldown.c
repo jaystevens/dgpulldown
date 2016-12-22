@@ -17,6 +17,10 @@
  */
 
 /*------
+Version 1.5.1-L: Linux/MacOS updates by Jason Stevens 2016-12-22.
+                fixed Linux build for modern gcc (6.x+)
+				fixed MacOS build for modern releases (10.10+)
+				added progress output
 Version 1.0.11-L: Linux version by Eric Olson.
 Version 1.0.11: Fixed the broken drop frame option.
 Version 1.0.10: Fixed a bug in in-place operation that corrupted the last
@@ -157,8 +161,9 @@ int main(int argc, char **argv)
                 i++;
             }
         }
-        fprintf(stderr, "dgpulldown for Linux, Unix and OS X\n"
-            "This version based off Version 2.0.11 by David Graft\n"
+        fprintf(stderr, 
+		    "dgpulldown for Linux, Unix and macOS Version: 1.5.1-L\n"
+            "This version based off Version 1.0.11 by Donald A. Graft/Jetlag/timecop\n"
             "Processing, please wait...\n");
         return process(0);
     }
