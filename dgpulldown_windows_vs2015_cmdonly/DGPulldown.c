@@ -92,6 +92,11 @@ int main()
 	setbuf(stderr, NULL);
 	setbuf(stdout, NULL);
 
+	// print out version
+	fprintf(stderr, 
+		"dgpulldown_cmdonly Version 1.5.1-C\n"
+		"This version based of Version 2.0.11 by Donald A. Graft/Jetlag/timecop\n");
+	
 	if (__argc > 1)
 	{
 		// help check
@@ -185,10 +190,7 @@ int main()
 		//freopen("CONOUT$", "wb", stdout);
 		//freopen("CONOUT$", "wb", stderr);
 
-		fprintf(stderr, 
-			"dgpulldown_cmdonly Version 1.5.1-C\n"
-			"This version based of Version 2.0.11 by Donald A. Graft/Jetlag/timecop\n"
-			"Processing, please wait...\n");
+		fprintf(stderr, "Processing, please wait...\n");
 		hThread = CreateThread(NULL, 32000, process, 0, 0, &threadId);
 		WaitForSingleObject(hThread, INFINITE);
 		return 0;

@@ -98,6 +98,11 @@ int main(int argc, char **argv)
     setbuf(stderr, NULL);
     setbuf(stdout, NULL);
 
+	// print out version
+	fprintf(stderr, 
+		"dgpulldown for Linux, Unix and macOS Version: 1.5.1-L\n"
+		"This version based off Version 1.0.11 by Donald A. Graft/Jetlag/timecop\n");
+	
     if (argc > 1) {
 		// help check
 		if (strcmp(argv[1], "-h") == 0)
@@ -161,10 +166,7 @@ int main(int argc, char **argv)
                 i++;
             }
         }
-        fprintf(stderr, 
-		    "dgpulldown for Linux, Unix and macOS Version: 1.5.1-L\n"
-            "This version based off Version 1.0.11 by Donald A. Graft/Jetlag/timecop\n"
-            "Processing, please wait...\n");
+        fprintf(stderr, "Processing, please wait...\n");
         return process(0);
     }
 	else
