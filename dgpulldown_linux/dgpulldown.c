@@ -19,8 +19,8 @@
 /*------
 Version 1.5.1-L: Linux/MacOS updates by Jason Stevens 2016-12-22.
                 fixed Linux build for modern gcc (6.x+)
-				fixed MacOS build for modern releases (10.10+)
-				added progress output
+                fixed MacOS build for modern releases (10.10+)
+                added progress output
 Version 1.0.11-L: Linux version by Eric Olson.
 Version 1.0.11: Fixed the broken drop frame option.
 Version 1.0.10: Fixed a bug in in-place operation that corrupted the last
@@ -98,29 +98,29 @@ int main(int argc, char **argv)
     setbuf(stderr, NULL);
     setbuf(stdout, NULL);
 
-	// print out version
-	fprintf(stderr, 
-		"dgpulldown for Linux, Unix and macOS Version: 1.5.1-L\n"
-		"This version based off Version 1.0.11 by Donald A. Graft/Jetlag/timecop\n");
-	
+    // print out version
+    fprintf(stderr, 
+        "dgpulldown for Linux, Unix and macOS Version: 1.5.1-L\n"
+        "This version based off Version 1.0.11 by Donald A. Graft/Jetlag/timecop\n");
+
     if (argc > 1) {
-		// help check
-		if (strcmp(argv[1], "-h") == 0)
-		{
-			helpText();
-			return 1;
-		}
-		if (strcmp(argv[1], "-help") == 0)
-		{
-			helpText();
-			return 1;
-		}
-		if (strcmp(argv[1], "--help") == 0)
-		{
-			helpText();
-			return 1;
-		}
-		
+        // help check
+        if (strcmp(argv[1], "-h") == 0)
+        {
+            helpText();
+            return 1;
+        }
+        if (strcmp(argv[1], "-help") == 0)
+        {
+            helpText();
+            return 1;
+        }
+        if (strcmp(argv[1], "--help") == 0)
+        {
+            helpText();
+            return 1;
+        }
+
         CliActive = 1;
         Rate = CONVERT_NO_CHANGE;
         strcpy(InputRate, "23.976");
@@ -169,44 +169,44 @@ int main(int argc, char **argv)
         fprintf(stderr, "Processing, please wait...\n");
         return process(0);
     }
-	else
-	{
-		// no options passed in, print help text and exit.
-		helpText();
-		return 1;
-	}
+    else
+    {
+        // no options passed in, print help text and exit.
+        helpText();
+        return 1;
+    }
 }
 
 void helpText(void)
 {
-	fprintf(stderr,
-		"Usage: dgpulldown input.m2v [options]\n"
-		"Options:\n"
-		"-o filename            File name for output file, if omitted, the name will be \"*.pulldown.m2v\".\n"
-		"-srcfps rate           Rate is any float fps value, e.g., \"23.976\" (default) or a fraction, e.g., \"30000/1001\"\n"
-		"-destfps rate          Rate is any valid mpeg2 float fps value, e.g., \"29.97\" (default).\n"
-		"                       Valid rates: 23.976, 24, 25, 29.97, 30, 50, 59.94, 60\n"
-		"-nom2v                 Do not create an output m2v file.\n"
-		//"-inplace               Modify the input file instead of creating an output file. [WINDOWS ONLY]\n"
-		//"-dumptc                Dump timecodes to \"*.timecodes.txt\". [WINDOWS ONLY]\n"
-		"-df                    Force dropframes.\n"
-		"-nodf                  Force no dropframes.\n"
-		"-start hh mm ss ff     Set start timecode.\n"
-		"-notc                  Do not set timecodes.\n"
-		"-bff                   Generate a BFF (Bottom Field First) output stream.\n"
-		"                       If absent, a TFF (Top Field First) stream is generated.\n"
-		"                       NTSC is BFF, PAL is TFF\n"
-		"-interlaced            Turn off the progressive flag. [LINUX/MAC ONLY]\n"
-		"                       Used to change BFF/TFF interlaced mode of output file.\n"
-		"                       DO NOT USE WITH PULLDOWN OPTIONS\n"
-		"-h|-help|--help        Print this help message.\n"
-		"\n"
-		"If neither srcfps nor destfps is given, then no frame rate change is performed.\n"
-		"If srcfps is specified as equal to destfps, then all pulldown is removed and the\n"
-		"stream is flagged as having a rate equal to that specified in destfps.\n"
-		"\n"
-		"Example:\n"
-		"dgpulldown source.m2v -o flagged.m2v -srcfps 23.976 -destfps 29.97\n");
+    fprintf(stderr,
+        "Usage: dgpulldown input.m2v [options]\n"
+        "Options:\n"
+        "-o filename            File name for output file, if omitted, the name will be \"*.pulldown.m2v\".\n"
+        "-srcfps rate           Rate is any float fps value, e.g., \"23.976\" (default) or a fraction, e.g., \"30000/1001\"\n"
+        "-destfps rate          Rate is any valid mpeg2 float fps value, e.g., \"29.97\" (default).\n"
+        "                       Valid rates: 23.976, 24, 25, 29.97, 30, 50, 59.94, 60\n"
+        "-nom2v                 Do not create an output m2v file.\n"
+        //"-inplace               Modify the input file instead of creating an output file. [WINDOWS ONLY]\n"
+        //"-dumptc                Dump timecodes to \"*.timecodes.txt\". [WINDOWS ONLY]\n"
+        "-df                    Force dropframes.\n"
+        "-nodf                  Force no dropframes.\n"
+        "-start hh mm ss ff     Set start timecode.\n"
+        "-notc                  Do not set timecodes.\n"
+        "-bff                   Generate a BFF (Bottom Field First) output stream.\n"
+        "                       If absent, a TFF (Top Field First) stream is generated.\n"
+        "                       NTSC is BFF, PAL is TFF\n"
+        "-interlaced            Turn off the progressive flag. [LINUX/MAC ONLY]\n"
+        "                       Used to change BFF/TFF interlaced mode of output file.\n"
+        "                       DO NOT USE WITH PULLDOWN OPTIONS\n"
+        "-h|-help|--help        Print this help message.\n"
+        "\n"
+        "If neither srcfps nor destfps is given, then no frame rate change is performed.\n"
+        "If srcfps is specified as equal to destfps, then all pulldown is removed and the\n"
+        "stream is flagged as having a rate equal to that specified in destfps.\n"
+        "\n"
+        "Example:\n"
+        "dgpulldown source.m2v -o flagged.m2v -srcfps 23.976 -destfps 29.97\n");
 }
 
 // Defines for the start code detection state machine.
