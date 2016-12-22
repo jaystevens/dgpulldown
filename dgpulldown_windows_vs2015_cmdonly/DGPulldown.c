@@ -95,7 +95,7 @@ int main()
 	// print out version
 	fprintf(stderr, 
 		"dgpulldown_cmdonly Version 1.5.1-C\n"
-		"This version based of Version 2.0.11 by Donald A. Graft/Jetlag/timecop\n");
+		"This version based of Version 1.0.11 by Donald A. Graft/Jetlag/timecop\n");
 	
 	if (__argc > 1)
 	{
