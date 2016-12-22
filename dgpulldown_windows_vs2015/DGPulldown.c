@@ -17,6 +17,7 @@
  */
 
 /*------
+Version 1.5.1: vs2015 updates by Jason Stevens 2016-12-22.
 Version 1.0.11: Fixed the broken drop frame option.
 Version 1.0.10: Fixed a bug in in-place operation that corrupted the last
 				32Kbytes of the file.

@@ -17,6 +17,8 @@
  */
 
  /*------
+ Version 1.5.1-C: vs2015 updates by Jason Stevens 2016-12-22.
+                command line version
  Version 1.0.11: Fixed the broken drop frame option.
  Version 1.0.10: Fixed a bug in in-place operation that corrupted the last
 				 32Kbytes of the file.
@@ -183,8 +185,9 @@ int main()
 		//freopen("CONOUT$", "wb", stdout);
 		//freopen("CONOUT$", "wb", stderr);
 
-		fprintf(stderr, "dgpulldown_cmdonly\n"
-			"This version based of Version 2.0.11 by David Graft\n"
+		fprintf(stderr, 
+			"dgpulldown_cmdonly Version 1.5.1-C\n"
+			"This version based of Version 2.0.11 by Donald A. Graft/Jetlag/timecop\n"
 			"Processing, please wait...\n");
 		hThread = CreateThread(NULL, 32000, process, 0, 0, &threadId);
 		WaitForSingleObject(hThread, INFINITE);
