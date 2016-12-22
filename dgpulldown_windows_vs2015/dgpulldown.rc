@@ -66,7 +66,7 @@ IDD_ICON                ICON    DISCARDABLE     "movie.ico"
 
 IDD_MAIN DIALOGEX 0, 0, 381, 274
 STYLE DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
-CAPTION "DGPulldown 1.0.11, by Donald A. Graft/Jetlag/timecop"
+CAPTION "DGPulldown 1.5.1"
 FONT 8, "MS Sans Serif"
 BEGIN
     LTEXT           "&Source ES:",IDC_STATIC,6,6,61,8
