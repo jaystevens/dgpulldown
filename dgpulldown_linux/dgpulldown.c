@@ -52,11 +52,8 @@ Version 1.0.4 : Repaired broken source frame rate edit box
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include <time.h>
-
-#ifdef __MACH__  // MacOS needs gettimeofday
+// gettimeofday (for printing output)
 #include <sys/time.h>
-#endif
 
 int check_options(void);
 unsigned int timeGetTime(void);
@@ -327,13 +324,8 @@ int process(int notused)
 unsigned int timeGetTime(void)
 {
     time_t s;
-    #ifdef __MACH__  // MacOS does not have clock_gettime, use gettimeofday instead
     struct timeval spec;
     gettimeofday(&spec, NULL);
-    #else  // regular linux clock_gettime
-    struct timespec spec;
-    clock_gettime(CLOCK_REALTIME, &spec);
-    #endif
     s = spec.tv_sec;
     return s;
 }
