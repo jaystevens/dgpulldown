@@ -800,7 +800,7 @@ static void generate_flags(void)
 
 static int process(void)
 {
-	int inplace_holder;
+	int inplace_tmp;
     F = 0;
     field_count = 0;
     pict = 0;
@@ -829,7 +829,7 @@ static int process(void)
     // Determine the stream type: ES or program.
     // store inplace on a temp local value and change inplace to 0
     // this simplifies setup of stream type
-    inplace_holder = inplace;
+    inplace_tmp = inplace;
 	inplace = 0;
     determine_stream_type();
     if (stream_type == STREAM_TYPE_PROGRAM) {
@@ -837,7 +837,7 @@ static int process(void)
         KillThread();
     }
     // reset inplace back to what it was
-	inplace = inplace_holder;
+	inplace = inplace_tmp;
 
     // Get file data_size
 	fseeko(input_fp, 0, SEEK_END);  // TODO - check seek worked
