@@ -77,8 +77,9 @@ static const char *const usage[] = {
 
 char *input_filename;
 char *output_filename;
-#define ES 0
-#define PROGRAM 1
+
+#define STREAM_TYPE_ES 0
+#define STREAM_TYPE_PROGRAM 1
 int stream_type;
 
 #define CONVERT_NO_CHANGE       0
@@ -141,7 +142,7 @@ static void helpText(void)
 FILE *input_fp = NULL;
 FILE *output_fp = NULL;
 FILE *debug_fp = NULL;
-FILE *wfd = NULL;
+//FILE *wfd = NULL;
 
 #define BUFFER_SIZE 32768
 #define IO_BUFFER_SIZE 33554432
@@ -156,7 +157,6 @@ unsigned char tff_flags[MAX_PATTERN_LENGTH];
 // For progress bar.
 int64_t data_size;
 int64_t data_count;
-
 static int state, found;
 static int f, F, D;
 static int ref;
@@ -165,12 +165,8 @@ float tfps, cfps;
 int64_t current_num, current_den, target_num, target_den;
 int rate;
 int rounded_fps;
-
 int field_count, pict, sec, minute, hour, drop_frame;
 int set_tc;
-
-char stats[255];
-char done[255];
 unsigned int time_start, time_now, time_elapsed;
 unsigned int time_last = 0;
 unsigned int percent = 0;
@@ -210,18 +206,18 @@ inline static void put_byte(int offset, unsigned char val)
 	if (inplace)
 	{
 		// Save the file position.
-		save = fseeko(wfd, 0, SEEK_CUR);
+		save = ftello(input_fp);
 		// Calculate the amount to seek back to write this value.
 		// offset is relative to the position of the last read value.
 		backup = buffer + Read - Rdptr - offset;
 		// Seek back.
-		fseeko(wfd, -backup, SEEK_CUR);
+		fseeko(input_fp, -backup, SEEK_CUR);
 		// Write the value.
 		//_write(wfd, &val, 1);
-		fwrite(&val, 1, 1, wfd);
+		fwrite(&val, 1, 1, input_fp);
 		// Restore the file position to be ready for the next
 		// read buffer refill.
-		fseeko(wfd, save, SEEK_SET);
+		fseeko(input_fp, save, SEEK_SET);
 	}
 	else
 	{
@@ -242,12 +238,12 @@ inline static unsigned char get_byte(void)
 			// Incrementing to the next byte will take us outside the buffer,
 			// so we need to refill it.
 			//Read = _read(wfd, buffer, BUFFER_SIZE);
-			Read = (int)fread(&buffer, BUFFER_SIZE, 1, wfd);
+			Read = (int)fread(&buffer, BUFFER_SIZE, 1, input_fp);
 			Rdptr = buffer;
 			if (Read < 1)
 			{
 				// No more data. Finish up.
-				fclose(wfd);
+				fclose(input_fp);
 				if (Debug) fclose(debug_fp);
 				KillThread();
 			}
@@ -406,7 +402,7 @@ static void video_parser(void)
 				if (D >= MAX_PATTERN_LENGTH - 1)
 				{
 					if (inplace)
-						fclose(wfd);
+						fclose(input_fp);
 					else
 					{
 						fclose(input_fp);
@@ -472,7 +468,7 @@ static void determine_stream_type(void)
 	unsigned char val, tc[4];
 	int state = 0, found = 0;
 
-	stream_type = ES;
+	stream_type = STREAM_TYPE_ES;
 
 	// Look for start codes.
 	state = NEED_FIRST_0;
@@ -511,7 +507,7 @@ static void determine_stream_type(void)
 			val = get_byte();
 			if (val == 0xba)
 			{
-				stream_type = PROGRAM;
+				stream_type = STREAM_TYPE_PROGRAM;
 				break;
 			}
 			else if (val == 0xb8)
@@ -804,6 +800,7 @@ static void generate_flags(void)
 
 static int process(void)
 {
+	int inplace_holder;
     F = 0;
     field_count = 0;
     pict = 0;
@@ -813,66 +810,56 @@ static int process(void)
     drop_frame = 0;
     time_start = dg_timeGetTime();
 
+	// Make sure all the options are ok
+	if (!check_options()) {
+		KillThread();
+	}
+
     // Open the input file.
-    if (inplace)
-    {
-        //if (input_filename[0] == 0 || (wfd = _open(input_filename, _O_RANDOM | _O_BINARY | _O_RDWR)) == -1)
-        wfd = fopen(input_filename, "rb+");
-        if (!wfd) {
-            fprintf(stderr, "Could not open the input file!");
-            KillThread();
-        }
-        // Read the first chunk of data.
-        //Read = _read(wfd, buffer, BUFFER_SIZE);
-        Read = (int)fread(&buffer, BUFFER_SIZE, 1, wfd);
-        Rdptr = buffer - 1;
-    }
-    else
-    {
-        input_fp = fopen(input_filename, "rb");
-        if (!input_fp) {
-            fprintf(stderr, "Could not open the input file!");
-            KillThread();
-        }
-        if (setvbuf(input_fp, NULL, _IOFBF, IO_BUFFER_SIZE) < 0) {
-            fprintf(stderr, "Unable to setup buffering on input file!");
-            KillThread();
-        }
-    }
+	input_fp = fopen(input_filename, "rb");
+	if (!input_fp) {
+		fprintf(stderr, "Could not open the input file!");
+		KillThread();
+	}
+	if (setvbuf(input_fp, NULL, _IOFBF, IO_BUFFER_SIZE) < 0) {
+		fprintf(stderr, "Unable to setup buffering on input file!");
+		KillThread();
+	}
 
     // Determine the stream type: ES or program.
+    // store inplace on a temp local value and change inplace to 0
+    // this simplifies setup of stream type
+    inplace_holder = inplace;
+	inplace = 0;
     determine_stream_type();
-    if (stream_type == PROGRAM) {
+    if (stream_type == STREAM_TYPE_PROGRAM) {
         fprintf(stderr, "The input file must be an elementary\nstream, not a program stream.");
         KillThread();
     }
+    // reset inplace back to what it was
+	inplace = inplace_holder;
 
     // Get file data_size
-    if (inplace) {
-        fseeko(wfd, 0, SEEK_END);  // TODO - check seek worked
-        data_size = ftello(wfd);
-    } else {
-        fseeko(input_fp, 0, SEEK_END);  // TODO - check seek worked
-        data_size = ftello(input_fp);
-    }
+	fseeko(input_fp, 0, SEEK_END);  // TODO - check seek worked
+	data_size = ftello(input_fp);
+
+	fclose(input_fp);
 
     // Re-open the input file.
     if (inplace) {
         //_close(wfd);
-        fclose(wfd);
         //wfd = _open(input_filename, _O_RANDOM | _O_BINARY | _O_RDWR);
-        wfd = fopen(input_filename, "r+");
-        if (!wfd)
+        input_fp = fopen(input_filename, "rb+");
+        if (!input_fp)
         {
             fprintf(stderr, "Could not open the input file!");
             KillThread();
         }
         //Read = _read(wfd, buffer, BUFFER_SIZE);
-        Read = (int)fread(&buffer, BUFFER_SIZE, 1, wfd);
+        Read = (int)fread(&buffer, BUFFER_SIZE, 1, input_fp);
         Rdptr = buffer - 1;
     }
     else {
-        fclose(input_fp);
         input_fp = fopen(input_filename, "rb");
         if (!input_fp)
         {
@@ -885,10 +872,7 @@ static int process(void)
         }
     }
 
-    // Make sure all the options are ok
-    if (!check_options()) {
-        KillThread();
-    }
+
 
     // Open the output file.
     if (output_m2v && !inplace) {
@@ -1003,10 +987,14 @@ int main(int argc, char *argv[])
     argparse_describe(&argparse, "\ndgpulldown2", "\nutility set repeat field flag in mpeg2");
     argparse_parse(&argparse, argc, (const char **) argv);  // returns argc
 
-    if (param_srcfps)
-        strcpy(InputRate, param_srcfps);
-    if (param_destfps)
-        strcpy(OutputRate, param_destfps);
+    if (param_srcfps) {
+		Rate = CONVERT_CUSTOM;
+		strcpy(InputRate, param_srcfps);
+	}
+    if (param_destfps) {
+		Rate = CONVERT_CUSTOM;
+		strcpy(OutputRate, param_destfps);
+	}
     printf("InputRate: %s\n", InputRate);
     printf("OutputRate: %s\n", OutputRate);
 
@@ -1023,7 +1011,7 @@ int main(int argc, char *argv[])
         printf("no input file specified [ -i input.m2v ]\n");
     }
 
-    if (output_filename == NULL) {
+    if (output_filename == NULL && inplace == 0) {
         init_exit = 1;
         printf("no output file specified [ -o output.m2v ]\n");
     }
