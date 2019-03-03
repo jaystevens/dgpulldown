@@ -138,9 +138,9 @@ static void helpText(void)
 #define NEED_SECOND_0 1
 #define NEED_1        2
 
-FILE *fp = NULL;
-FILE *wfp = NULL;
-FILE *dfp = NULL;
+FILE *input_fp = NULL;
+FILE *output_fp = NULL;
+FILE *debug_fp = NULL;
 FILE *wfd = NULL;
 
 #define BUFFER_SIZE 32768
@@ -154,7 +154,7 @@ unsigned char bff_flags[MAX_PATTERN_LENGTH];
 unsigned char tff_flags[MAX_PATTERN_LENGTH];
 
 // For progress bar.
-int64_t size;
+int64_t data_size;
 int64_t data_count;
 
 static int state, found;
@@ -225,7 +225,7 @@ inline static void put_byte(int offset, unsigned char val)
 	}
 	else
 	{
-		fwrite(&val, 1, 1, wfp);
+		fwrite(&val, 1, 1, output_fp);
 	}
 }
 
@@ -248,7 +248,7 @@ inline static unsigned char get_byte(void)
 			{
 				// No more data. Finish up.
 				fclose(wfd);
-				if (Debug) fclose(dfp);
+				if (Debug) fclose(debug_fp);
 				KillThread();
 			}
 			// We return the first byte of the buffer now.
@@ -262,19 +262,19 @@ inline static unsigned char get_byte(void)
 	}
 	else
 	{
-		if (fread(&val, 1, 1, fp) != 1)
+		if (fread(&val, 1, 1, input_fp) != 1)
 		{
-			fclose(fp);
-			if (output_m2v && !inplace) fclose(wfp);
-			if (Debug) fclose(dfp);
+			fclose(input_fp);
+			if (output_m2v && !inplace) fclose(output_fp);
+			if (Debug) fclose(debug_fp);
 			KillThread();
 		}
 	}
 	// progress output, update only once per second
 	data_count++;
 	time_now = dg_timeGetTime();
-	//if (!(data_count++ % 524288) && (size > 0))
-	if (((time_now - time_last) >= 1) && (size > 0))
+	//if (!(data_count++ % 524288) && (data_size > 0))
+	if (((time_now - time_last) >= 1) && (data_size > 0))
 	{
 		if (time_now >= time_start)
 			time_elapsed = time_now - time_start;
@@ -285,7 +285,7 @@ inline static unsigned char get_byte(void)
 			time_elapsed = (unsigned int)(((4294967295 - time_start) + time_now + 1) / 1000);
 #endif
 		time_last = time_now;
-		percent = (unsigned int)(data_count * 100 / size);
+		percent = (unsigned int)(data_count * 100 / data_size);
 		fprintf(stderr, "%02d%% %7d input frames : output time %02d:%02d:%02d%c%02d @ %6.3f [elapsed %d sec]\n",
 			percent, F, hour, minute, sec, (drop_frame ? ',' : '.'), pict, tfps, time_elapsed);
 	}
@@ -390,7 +390,7 @@ static void video_parser(void)
 					if (output_m2v && !inplace) put_byte(0, val);
 					pict |= (val & 0x80) >> 7;
 				}
-				if (Debug) fprintf(dfp,"%7d  %02d:%02d:%02d%c%02d\n",F,hour,minute,sec,(drop_frame?',':'.'),pict);
+				if (Debug) fprintf(debug_fp,"%7d  %02d:%02d:%02d%c%02d\n",F,hour,minute,sec,(drop_frame?',':'.'),pict);
 			}
 			else if (val == 0x00)
 			{
@@ -409,9 +409,9 @@ static void video_parser(void)
 						fclose(wfd);
 					else
 					{
-						fclose(fp);
+						fclose(input_fp);
 						if (output_m2v)
-							fclose(wfp);
+							fclose(output_fp);
 					}
 					fprintf(stderr, "Maximum filelength exceeded, aborting!");
 					KillThread();
@@ -829,12 +829,12 @@ static int process(void)
     }
     else
     {
-        fp = fopen(input_filename, "rb");
-        if (!fp) {
+        input_fp = fopen(input_filename, "rb");
+        if (!input_fp) {
             fprintf(stderr, "Could not open the input file!");
             KillThread();
         }
-        if (setvbuf(fp, NULL, _IOFBF, IO_BUFFER_SIZE) < 0) {
+        if (setvbuf(input_fp, NULL, _IOFBF, IO_BUFFER_SIZE) < 0) {
             fprintf(stderr, "Unable to setup buffering on input file!");
             KillThread();
         }
@@ -847,13 +847,13 @@ static int process(void)
         KillThread();
     }
 
-    // Get file size
+    // Get file data_size
     if (inplace) {
         fseeko(wfd, 0, SEEK_END);  // TODO - check seek worked
-        size = ftello(wfd);
+        data_size = ftello(wfd);
     } else {
-        fseeko(fp, 0, SEEK_END);  // TODO - check seek worked
-        size = ftello(fp);
+        fseeko(input_fp, 0, SEEK_END);  // TODO - check seek worked
+        data_size = ftello(input_fp);
     }
 
     // Re-open the input file.
@@ -872,14 +872,14 @@ static int process(void)
         Rdptr = buffer - 1;
     }
     else {
-        fclose(fp);
-        fp = fopen(input_filename, "rb");
-        if (!fp)
+        fclose(input_fp);
+        input_fp = fopen(input_filename, "rb");
+        if (!input_fp)
         {
             fprintf(stderr, "Could not open the input file!");
             KillThread();
         }
-        if (setvbuf(fp, NULL, _IOFBF, IO_BUFFER_SIZE) < 0) {
+        if (setvbuf(input_fp, NULL, _IOFBF, IO_BUFFER_SIZE) < 0) {
             fprintf(stderr, "Unable to setup buffering on input file!");
             KillThread();
         }
@@ -892,15 +892,15 @@ static int process(void)
 
     // Open the output file.
     if (output_m2v && !inplace) {
-        wfp = fopen(output_filename, "wb");
-        if (wfp == NULL)
+        output_fp = fopen(output_filename, "wb");
+        if (output_fp == NULL)
         {
             fprintf(stderr, "Could not open the output file\n%s!", output_filename);
             KillThread();
         }
-        if (setvbuf(wfp, NULL, _IOFBF, IO_BUFFER_SIZE) < 0) {
+        if (setvbuf(output_fp, NULL, _IOFBF, IO_BUFFER_SIZE) < 0) {
             fprintf(stderr, "Unable to setup buffering on output file!");
-            fclose(wfp);
+            fclose(output_fp);
             KillThread();
         }
     }
@@ -908,18 +908,18 @@ static int process(void)
     if (Debug) {
         if (CliActive) {
             strcat(output_filename, ".timecode.txt");
-            dfp = fopen(output_filename, "w");
+            debug_fp = fopen(output_filename, "w");
         }
         else {
             strcpy(output_filename, input_filename);
             strcat(output_filename, ".pulldown.m2v.timecode.txt");
-            dfp = fopen(output_filename, "w");
+            debug_fp = fopen(output_filename, "w");
         }
-        if (!dfp) {
+        if (!debug_fp) {
             fprintf(stderr, "Could not open the timecode file!");
             KillThread();
         }
-        fprintf(dfp,"   field   frame  HH:MM:SSdFF\n");
+        fprintf(debug_fp,"   field   frame  HH:MM:SSdFF\n");
     }
 
     // Generate the flags sequences.
