@@ -40,19 +40,42 @@
 				 Changes by 'neuron2'.
  ------*/
 
+#define _LARGEFILE64_SOURCE
 #if defined(_WIN32)
 #include <windows.h>
 #include <commctrl.h>
 //#include "stdafx.h"
-#endif
-#include <stdio.h> 
 #include <io.h>
+#else
+#include <sys/time.h>
+#include <sys/types.h>
+#endif
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <inttypes.h>
+#include <string.h>
 #include <fcntl.h>
 #include <math.h>
 #include <time.h>
 
-
-BOOL check_options(void);
+ // these macros help with cross-platform
+#ifdef __MINGW32__
+#undef fseeko
+#define fseeko(x, y, z) fseeko64(x, y, z)
+#undef ftello
+#define ftello(x)       ftello64(x)
+#elif defined(_WIN32)
+#undef fseeko
+#define fseeko(x, y, z) _fseeki64(x, y, z)
+#undef ftello
+#define ftello(x)       _ftelli64(x)
+#undef lseek64
+#define lseek64(x, y, z) _lseek64(x, y, z)
+#elif defined(__MACH__)
+#undef lseek64
+#define lseek64(x, y, z) lseek(x, y, z)
+#endif
 
 char input_file[2048];
 char output_file[2048];
@@ -65,11 +88,6 @@ int stream_type;
 #define CONVERT_24000_TO_29970  2
 #define CONVERT_25000_TO_29970  3
 #define CONVERT_CUSTOM          4
-
-HWND hWnd;
-HANDLE hThread;
-DWORD threadId;
-DWORD WINAPI process(LPVOID n);
 
 unsigned int CliActive = 0;
 unsigned int Rate = CONVERT_23976_TO_29970;
@@ -85,126 +103,6 @@ int tff = 1;
 static int output_m2v = 1;
 void helpText(void);
 
-int main()
-{
-	int argc = __argc;
-	char **argv = __argv;
-	int i;
-
-	// disable buffering on stdout and stderr
-	setbuf(stderr, NULL);
-	setbuf(stdout, NULL);
-
-	// print out version
-	fprintf(stderr, 
-		"dgpulldown_cmdonly Version 1.5.1-C\n"
-		"This version based of Version 1.0.11 by Donald A. Graft/Jetlag/timecop\n");
-	
-	if (__argc > 1)
-	{
-		// help check
-		if (strcmp(argv[1], "-h") == 0)
-		{
-			helpText();
-			return 1;
-		}
-		if (strcmp(argv[1], "-help") == 0)
-		{
-			helpText();
-			return 1;
-		}
-		if (strcmp(argv[1], "--help") == 0)
-		{
-			helpText();
-			return 1;
-		}
-
-		CliActive = 1;
-		Rate = CONVERT_NO_CHANGE;
-		strcpy(InputRate, "23.976");
-		strcpy(OutputRate, "29.970");
-		strncpy(input_file, __argv[1], sizeof(input_file));
-		// default output file
-		strcpy(output_file, input_file);
-		strcat(output_file, ".pulldown.m2v");
-		for (i = 2; i < argc; i++)
-		{
-			if (strcmp(argv[i], "-srcfps") == 0)
-			{
-				Rate = CONVERT_CUSTOM;
-				strcpy(InputRate, argv[i+1]);
-				// gobble up the argument
-				i++;
-			}
-			else if (strcmp(argv[i], "-destfps") == 0)
-			{
-				Rate = CONVERT_CUSTOM;
-				strcpy(OutputRate, argv[i+1]);
-				// gobble up the argument
-				i++;
-			}
-			else if (strcmp(argv[i], "-dumptc") == 0)
-			{
-				Debug = 1;
-			}
-			else if (strcmp(argv[i], "-nom2v") == 0)
-			{
-				output_m2v = 0;
-			}
-			else if (strcmp(argv[i], "-inplace") == 0)
-			{
-				inplace = 1;
-			}
-			else if (strcmp(argv[i], "-bff") == 0)
-			{
-				tff = 0;
-			}
-			else if (strcmp(argv[i], "-df") == 0)
-			{
-				DropFrames = 1;
-			}
-			else if (strcmp(argv[i], "-nodf") == 0)
-			{
-				DropFrames = 0;
-			}
-			else if (strcmp(argv[i], "-notc") == 0)
-			{
-				TimeCodes = 0;
-			}
-			else if (strcmp(argv[i], "-start") == 0)
-			{
-				StartTime = 1;
-				strcpy(HH, argv[i+1]);
-				strcpy(MM, argv[i+2]);
-				strcpy(SS, argv[i+3]);
-				strcpy(FF, argv[i+4]);
-				// gobble up the arguments
-				i += 4;
-			}
-			else if (strcmp(argv[i], "-o") == 0)
-			{
-				strcpy(output_file, argv[i+1]);
-				// gobble up the argument
-				i++;
-			}
-		}
-
-		//freopen("CONIN$", "rb", stdin);
-		//freopen("CONOUT$", "wb", stdout);
-		//freopen("CONOUT$", "wb", stderr);
-
-		fprintf(stderr, "Processing, please wait...\n");
-		hThread = CreateThread(NULL, 32000, process, 0, 0, &threadId);
-		WaitForSingleObject(hThread, INFINITE);
-		return 0;
-	}
-	else
-	{
-		// no options passed in, print help text and exit.
-		helpText();
-		return 1;
-	}
-}
 
 void helpText(void)
 {
@@ -252,24 +150,20 @@ unsigned char buffer[BUFFER_SIZE];
 unsigned char *Rdptr;
 int Read;
 
-void determine_stream_type(void);
-void video_parser(void);
-void generate_flags(void);
-
 #define MAX_PATTERN_LENGTH 2000000
 unsigned char bff_flags[MAX_PATTERN_LENGTH];
 unsigned char tff_flags[MAX_PATTERN_LENGTH];
 
 // For progress bar.
-__int64 size;
-__int64 data_count;
+int64_t size;
+int64_t data_count;
 
 static int state, found;
 static int f, F, D;
 static int ref;
 int EOF_reached;
 float tfps, cfps;
-__int64 current_num, current_den, target_num, target_den;
+int64_t current_num, current_den, target_num, target_den;
 int rate;
 int rounded_fps;
 
@@ -282,11 +176,11 @@ unsigned int time_start, time_now, time_elapsed;
 unsigned int time_last = 0;
 unsigned int percent = 0;
 
-void KillThread(void)
+static void KillThread(void)
 {
 	if (CliActive)
 		fprintf(stderr, "Done.\n");
-	ExitThread(0);
+	exit(0);
 }
 
 static unsigned int dg_timeGetTime(void)
@@ -305,150 +199,30 @@ static unsigned int dg_timeGetTime(void)
 #endif
 }
 
-DWORD WINAPI process(LPVOID n)
-{
-	F = 0;
-	field_count = 0;
-	pict = 0;
-	sec = 0;
-	minute = 0;
-	hour = 0;
-	drop_frame = 0;
-	time_start = dg_timeGetTime();
-
-	// Open the input file.
-	if (inplace)
-	{
-		if (input_file[0] == 0 || (wfd = _open(input_file, _O_RANDOM | _O_BINARY | _O_RDWR)) == -1)
-		{
-			fprintf(stderr, "Could not open the input file!");
-			KillThread();
-		}
-		// Read the first chunk of data.
-		Read = _read(wfd, buffer, BUFFER_SIZE);
-		Rdptr = buffer - 1;
-	}
-	else
-	{
-		if (input_file[0] == 0 || (fp = fopen(input_file, "rb")) == NULL)
-		{
-			fprintf(stderr, "Could not open the input file!");
-			KillThread();
-		}
-		setvbuf(fp, NULL, _IOFBF, BUFSIZ);
-	}
-
-	// Determine the stream type: ES or program.
-	determine_stream_type();
-	if (stream_type == PROGRAM)
-	{
-		fprintf(stderr, "The input file must be an elementary\nstream, not a program stream.");
-		KillThread();
-	}
-
-	// Re-open the input file.
-	if (inplace)
-	{
-		_close(wfd);
-		wfd = _open(input_file, _O_RANDOM | _O_BINARY | _O_RDWR);
-		if (wfd == -1)
-		{
-			fprintf(stderr, "Could not open the input file!");
-			KillThread();
-		}
-		Read = _read(wfd, buffer, BUFFER_SIZE);
-		Rdptr = buffer - 1;
-	}
-	else
-	{
-		fclose(fp);
-		fp = fopen(input_file, "rb");
-		if (fp == NULL)
-		{
-			fprintf(stderr, "Could not open the input file!");
-			KillThread();
-		}
-		setvbuf(fp, NULL, _IOFBF, BUFSIZ);
-	}
-
-	// Get the file size.
-	fd = _open(input_file, _O_RDONLY | _O_BINARY | _O_SEQUENTIAL);
-	size = _lseeki64(fd, 0, SEEK_END);
-	_close(fd);
-
-	// Make sure all the options are ok
-	if (!check_options()) 
-	{
-		KillThread();
-	}
-
-	// Open the output file.
-	if (output_m2v && !inplace)
-	{
-		wfp = fopen(output_file, "wb");
-		if (wfp == NULL)
-		{
-			fprintf(stderr, "Could not open the output file\n%s!", output_file);
-			KillThread();
-		}
-		setvbuf(wfp, NULL, _IOFBF, BUFSIZ);
-	}
-
-	if (Debug) {
-		if (CliActive)
-		{
-			strcat(output_file, ".timecode.txt");
-			dfp = fopen(output_file, "w");
-		}
-		else
-		{
-			strcpy(output_file, input_file);
-			strcat(output_file, ".pulldown.m2v.timecode.txt");
-			dfp = fopen(output_file, "w");
-		}
-		if (dfp == NULL)
-		{
-			fprintf(stderr, "Could not open the timecode file!");
-			KillThread();
-		}
-		fprintf(dfp,"   field   frame  HH:MM:SSdFF\n");
-	}
-
-	// Generate the flags sequences.
-	// It's easier and cleaner to pre-calculate than
-	// to try to work it out on the fly in encode order.
-	// Pre-calculation can work in display order.
-	generate_flags();
-
-	// Start converting.
-	video_parser();
-
-	return 0;
-}
-
 // Write a value in the file at an offset relative
 // to the last read character. This allows for
 // read ahead (write behind) by using negative offsets.
 // Currently, it's only used for the 4-byte timecode.
 // The offset is ignored when not doing in-place operation.
-_inline void put_byte(int offset, unsigned char val)
+inline static void put_byte(int offset, unsigned char val)
 {
-	__int64 save, backup;
+	int64_t save, backup;
 
 	if (inplace)
 	{
 		// Save the file position.
-		save = _lseeki64(wfd, 0, SEEK_CUR);
+		save = lseek64(wfd, 0, SEEK_CUR);
 		// Calculate the amount to seek back to write this value.
 		// offset is relative to the position of the last read value.
 		backup = buffer + Read - Rdptr - offset;
 		// Seek back.
-		_lseeki64(wfd, -backup, SEEK_CUR);
+		lseek64(wfd, -backup, SEEK_CUR);
 		// Write the value.
-		_write(wfd, &val, 1);
+		//_write(wfd, &val, 1);
+		fwrite(&val, 1, 1, wfd);
 		// Restore the file position to be ready for the next
 		// read buffer refill.
-		_lseeki64(wfd, save, SEEK_SET);
+		lseek64(wfd, save, SEEK_SET);
 	}
 	else
 	{
@@ -459,7 +233,7 @@ _inline void put_byte(int offset, unsigned char val)
 // Get a byte from the stream. We do our own buffering
 // for in-place operation, otherwise we rely on the
 // operating system.
-_inline unsigned char get_byte(void)
+inline static unsigned char get_byte(void)
 {
 	unsigned char val;
 
@@ -469,12 +243,13 @@ _inline unsigned char get_byte(void)
 		{
 			// Incrementing to the next byte will take us outside the buffer,
 			// so we need to refill it.
-			Read = _read(wfd, buffer, BUFFER_SIZE);
+			//Read = _read(wfd, buffer, BUFFER_SIZE);
+			Read = fread(&buffer, BUFFER_SIZE, 1, wfd);
 			Rdptr = buffer;
 			if (Read < 1)
 			{
 				// No more data. Finish up.
-				_close(wfd);
+				fclose(wfd);
 				if (Debug) fclose(dfp);
 				KillThread();
 			}
@@ -509,7 +284,7 @@ _inline unsigned char get_byte(void)
 #if defined(_WIN32)
             time_elapsed = (time_now - time_start) + 1;
 #else
-			time_elapsed = ((4294967295 - time_start) + time_now + 1) / 1000;
+			time_elapsed = (unsigned int)(((4294967295 - time_start) + time_now + 1) / 1000);
 #endif
 		time_last = time_now;
 		percent = (unsigned int)(data_count * 100 / size);
@@ -520,7 +295,7 @@ _inline unsigned char get_byte(void)
 	return val;
 }
 
-void video_parser(void)
+static void video_parser(void)
 {
 	unsigned char val, tc[4];
 	int trf;
@@ -633,7 +408,7 @@ void video_parser(void)
 				if (D >= MAX_PATTERN_LENGTH - 1)
 				{
 					if (inplace)
-						_close(wfd);
+						fclose(wfd);
 					else
 					{
 						fclose(fp);
@@ -768,7 +543,7 @@ static void determine_stream_type(void)
 	}
 }
 
-BOOL check_options(void)
+static int check_options(void)
 {
     char buf[100];
 
@@ -817,7 +592,7 @@ BOOL check_options(void)
 			float f;
 
 			sscanf(InputRate, "%f", &f);
-			current_num = (__int64) (f * 1000000.0);
+			current_num = (int64_t) (f * 1000000.0);
 			current_den = 1000000;
 		}
 
@@ -826,7 +601,7 @@ BOOL check_options(void)
 			fprintf(stderr, buf, "Current fps numerator");
 			sprintf(buf, "%I64Ld", current_den);
 			fprintf(stderr, buf, "Current fps denominator");
-			return FALSE;
+			return 0;
 		}
 
 		sscanf(OutputRate, "%f", &tfps);
@@ -890,7 +665,7 @@ BOOL check_options(void)
 	else
 	{
 		fprintf(stderr, "Target rate is not a legal MPEG2 rate");
-		return FALSE;
+		return 0;
 	}
 
 	// Make current fps = target fps for "No change"
@@ -930,18 +705,18 @@ BOOL check_options(void)
 		fprintf(stderr, buf, "Target fps numerator");
 		sprintf(buf, "%I64Ld", target_den);
 		fprintf(stderr, buf, "Target fps denominator");
-		return FALSE;
+		return 0;
 	}
 
 	if (((target_num - current_num) >> 1) > current_num)
 	{
 		fprintf(stderr, "target rate/current rate\nmust not be greater than 1.5");
-		return FALSE;
+		return 0;
 	}
 	else if (target_num < current_num)
 	{
 		fprintf(stderr, "target rate/current rate\nmust not be less than 1.0");
-		return FALSE;
+		return 0;
 	}
 
 	// set up df and tc vars
@@ -995,15 +770,15 @@ BOOL check_options(void)
 	strcpy(SS, buf);
 	sprintf(buf, "%02d",pict);
 	strcpy(FF, buf);
-	return TRUE;
+	return 1;
 }
 
-void generate_flags(void)
+static void generate_flags(void)
 {
 	// Yay for integer math
 	unsigned char *p, *q;
 	unsigned int i,trfp;
-	__int64 dfl,tfl;
+	int64_t dfl,tfl;
 
 	dfl = (target_num - current_num) << 1;
 	tfl = current_num >> 1;
@@ -1027,4 +802,249 @@ void generate_flags(void)
 			*q++ = (trfp ^ 2);
 		}
 	}
+}
+
+static int process(void)
+{
+    F = 0;
+    field_count = 0;
+    pict = 0;
+    sec = 0;
+    minute = 0;
+    hour = 0;
+    drop_frame = 0;
+    time_start = dg_timeGetTime();
+
+    // Open the input file.
+    if (inplace)
+    {
+        //if (input_file[0] == 0 || (wfd = _open(input_file, _O_RANDOM | _O_BINARY | _O_RDWR)) == -1)
+        if (input_file[0] == 0 || (wfd = fopen(input_file, "r+")) == -1)
+        {
+            fprintf(stderr, "Could not open the input file!");
+            KillThread();
+        }
+        // Read the first chunk of data.
+        //Read = _read(wfd, buffer, BUFFER_SIZE);
+        Read = fread(&buffer, BUFFER_SIZE, 1, wfd);
+        Rdptr = buffer - 1;
+    }
+    else
+    {
+        if (input_file[0] == 0 || (fp = fopen(input_file, "rb")) == NULL)
+        {
+            fprintf(stderr, "Could not open the input file!");
+            KillThread();
+        }
+        setvbuf(fp, NULL, _IOFBF, BUFSIZ);
+    }
+
+    // Determine the stream type: ES or program.
+    determine_stream_type();
+    if (stream_type == PROGRAM)
+    {
+        fprintf(stderr, "The input file must be an elementary\nstream, not a program stream.");
+        KillThread();
+    }
+
+    // Re-open the input file.
+    if (inplace)
+    {
+        //_close(wfd);
+        fclose(wfd);
+        //wfd = _open(input_file, _O_RANDOM | _O_BINARY | _O_RDWR);
+        wfd = fopen(input_file, "r+");
+        if (wfd == -1)
+        {
+            fprintf(stderr, "Could not open the input file!");
+            KillThread();
+        }
+        //Read = _read(wfd, buffer, BUFFER_SIZE);
+        Read = (int)fread(&buffer, BUFFER_SIZE, 1, wfd);
+        Rdptr = buffer - 1;
+    }
+    else
+    {
+        fclose(fp);
+        fp = fopen(input_file, "rb");
+        if (fp == NULL)
+        {
+            fprintf(stderr, "Could not open the input file!");
+            KillThread();
+        }
+        setvbuf(fp, NULL, _IOFBF, BUFSIZ);
+    }
+
+    // Get the file size.
+    //fd = _open(input_file, _O_RDONLY | _O_BINARY | _O_SEQUENTIAL);
+    fd = fopen(input_file, "r");
+    size = lseek64(fd, 0, SEEK_END);
+    fclose(fd);
+
+    // Make sure all the options are ok
+    if (!check_options())
+    {
+        KillThread();
+    }
+
+    // Open the output file.
+    if (output_m2v && !inplace)
+    {
+        wfp = fopen(output_file, "wb");
+        if (wfp == NULL)
+        {
+            fprintf(stderr, "Could not open the output file\n%s!", output_file);
+            KillThread();
+        }
+        setvbuf(wfp, NULL, _IOFBF, BUFSIZ);
+    }
+
+    if (Debug) {
+        if (CliActive)
+        {
+            strcat(output_file, ".timecode.txt");
+            dfp = fopen(output_file, "w");
+        }
+        else
+        {
+            strcpy(output_file, input_file);
+            strcat(output_file, ".pulldown.m2v.timecode.txt");
+            dfp = fopen(output_file, "w");
+        }
+        if (dfp == NULL)
+        {
+            fprintf(stderr, "Could not open the timecode file!");
+            KillThread();
+        }
+        fprintf(dfp,"   field   frame  HH:MM:SSdFF\n");
+    }
+
+    // Generate the flags sequences.
+    // It's easier and cleaner to pre-calculate than
+    // to try to work it out on the fly in encode order.
+    // Pre-calculation can work in display order.
+    generate_flags();
+
+    // Start converting.
+    video_parser();
+
+    return 0;
+}
+
+int main(int argc, char *argv[])
+{
+    int i;
+
+    // disable buffering on stdout and stderr
+    setbuf(stderr, NULL);
+    setbuf(stdout, NULL);
+
+    // print out version
+    fprintf(stderr,
+            "dgpulldown_cmdonly Version 1.5.1-C\n"
+            "This version based of Version 1.0.11 by Donald A. Graft/Jetlag/timecop\n");
+
+    if (argc > 1)
+    {
+        // help check
+        if (strcmp(argv[1], "-h") == 0)
+        {
+            helpText();
+            return 1;
+        }
+        if (strcmp(argv[1], "-help") == 0)
+        {
+            helpText();
+            return 1;
+        }
+        if (strcmp(argv[1], "--help") == 0)
+        {
+            helpText();
+            return 1;
+        }
+
+        CliActive = 1;
+        Rate = CONVERT_NO_CHANGE;
+        strcpy(InputRate, "23.976");
+        strcpy(OutputRate, "29.970");
+        strncpy(input_file, argv[1], sizeof(input_file));
+        // default output file
+        strcpy(output_file, input_file);
+        strcat(output_file, ".pulldown.m2v");
+        for (i = 2; i < argc; i++)
+        {
+            if (strcmp(argv[i], "-srcfps") == 0)
+            {
+                Rate = CONVERT_CUSTOM;
+                strcpy(InputRate, argv[i+1]);
+                // gobble up the argument
+                i++;
+            }
+            else if (strcmp(argv[i], "-destfps") == 0)
+            {
+                Rate = CONVERT_CUSTOM;
+                strcpy(OutputRate, argv[i+1]);
+                // gobble up the argument
+                i++;
+            }
+            else if (strcmp(argv[i], "-dumptc") == 0)
+            {
+                Debug = 1;
+            }
+            else if (strcmp(argv[i], "-nom2v") == 0)
+            {
+                output_m2v = 0;
+            }
+            else if (strcmp(argv[i], "-inplace") == 0)
+            {
+                inplace = 1;
+            }
+            else if (strcmp(argv[i], "-bff") == 0)
+            {
+                tff = 0;
+            }
+            else if (strcmp(argv[i], "-df") == 0)
+            {
+                DropFrames = 1;
+            }
+            else if (strcmp(argv[i], "-nodf") == 0)
+            {
+                DropFrames = 0;
+            }
+            else if (strcmp(argv[i], "-notc") == 0)
+            {
+                TimeCodes = 0;
+            }
+            else if (strcmp(argv[i], "-start") == 0)
+            {
+                StartTime = 1;
+                strcpy(HH, argv[i+1]);
+                strcpy(MM, argv[i+2]);
+                strcpy(SS, argv[i+3]);
+                strcpy(FF, argv[i+4]);
+                // gobble up the arguments
+                i += 4;
+            }
+            else if (strcmp(argv[i], "-o") == 0)
+            {
+                strcpy(output_file, argv[i+1]);
+                // gobble up the argument
+                i++;
+            }
+        }
+
+        //freopen("CONIN$", "rb", stdin);
+        //freopen("CONOUT$", "wb", stdout);
+        //freopen("CONOUT$", "wb", stderr);
+
+        fprintf(stderr, "Processing, please wait...\n");
+        process();
+        return 0;
+    }
+    else
+    {
+        // no options passed in, print help text and exit.
+        helpText();
+        return 1;
+    }
 }
