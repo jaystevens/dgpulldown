@@ -142,9 +142,9 @@ FILE *fp = NULL;
 FILE *wfp = NULL;
 FILE *dfp = NULL;
 FILE *wfd = NULL;
-FILE *fd = NULL;
 
 #define BUFFER_SIZE 32768
+#define IO_BUFFER_SIZE 33554432
 unsigned char buffer[BUFFER_SIZE];
 unsigned char *Rdptr;
 int Read;
@@ -818,7 +818,6 @@ static int process(void)
     {
         //if (input_filename[0] == 0 || (wfd = _open(input_filename, _O_RANDOM | _O_BINARY | _O_RDWR)) == -1)
         wfd = fopen(input_filename, "rb+");
-
         if (!wfd) {
             fprintf(stderr, "Could not open the input file!");
             KillThread();
@@ -835,7 +834,10 @@ static int process(void)
             fprintf(stderr, "Could not open the input file!");
             KillThread();
         }
-        setvbuf(fp, NULL, _IOFBF, BUFSIZ);
+        if (setvbuf(fp, NULL, _IOFBF, IO_BUFFER_SIZE) < 0) {
+            fprintf(stderr, "Unable to setup buffering on input file!");
+            KillThread();
+        }
     }
 
     // Determine the stream type: ES or program.
@@ -843,6 +845,15 @@ static int process(void)
     if (stream_type == PROGRAM) {
         fprintf(stderr, "The input file must be an elementary\nstream, not a program stream.");
         KillThread();
+    }
+
+    // Get file size
+    if (inplace) {
+        fseeko(wfd, 0, SEEK_END);  // TODO - check seek worked
+        size = ftello(wfd);
+    } else {
+        fseeko(fp, 0, SEEK_END);  // TODO - check seek worked
+        size = ftello(fp);
     }
 
     // Re-open the input file.
@@ -868,14 +879,11 @@ static int process(void)
             fprintf(stderr, "Could not open the input file!");
             KillThread();
         }
-        setvbuf(fp, NULL, _IOFBF, BUFSIZ);
+        if (setvbuf(fp, NULL, _IOFBF, IO_BUFFER_SIZE) < 0) {
+            fprintf(stderr, "Unable to setup buffering on input file!");
+            KillThread();
+        }
     }
-
-    // Get the file size.
-    //fd = _open(input_filename, _O_RDONLY | _O_BINARY | _O_SEQUENTIAL);
-    fd = fopen(input_filename, "r");
-    size = fseeko(fd, 0, SEEK_END);
-    fclose(fd);
 
     // Make sure all the options are ok
     if (!check_options()) {
@@ -890,7 +898,11 @@ static int process(void)
             fprintf(stderr, "Could not open the output file\n%s!", output_filename);
             KillThread();
         }
-        setvbuf(wfp, NULL, _IOFBF, BUFSIZ);
+        if (setvbuf(wfp, NULL, _IOFBF, IO_BUFFER_SIZE) < 0) {
+            fprintf(stderr, "Unable to setup buffering on output file!");
+            fclose(wfp);
+            KillThread();
+        }
     }
 
     if (Debug) {
@@ -928,6 +940,9 @@ int main(int argc, char *argv[])
     int init_exit = 0;
 
     // argparse vars
+    int param_convert23 = 0;
+    int param_convert24 = 0;
+    int param_convert25 = 0;
     char *param_srcfps = NULL;
     char *param_destfps = NULL;
     int param_nom2v = 0;
@@ -943,6 +958,10 @@ int main(int argc, char *argv[])
             OPT_STRING('i', "input", &input_filename, "input m2v file", NULL, 0, 0),
             OPT_STRING('o', "output", &output_filename, "output m2v file", NULL, 0, 0),
             //OPT_STRING('l', "loglevel", &loglevel, "loglevel [quiet, error, warning, info, verbose, debug]", NULL, 0, 0),
+            OPT_GROUP("conversion presets"),
+            OPT_BOOLEAN(0, "convert23", &param_convert23, "convert 23.976 to 29.970", NULL, 0, 0),
+            OPT_BOOLEAN(0, "convert24", &param_convert24, "convert 24.000 to 29.970", NULL, 0, 0),
+            OPT_BOOLEAN(0, "convert25", &param_convert25, "convert 25.000 to 29.970", NULL, 0, 0),
             OPT_GROUP("fps"),
             OPT_STRING(0, "srcfps", &param_srcfps, "rate is any float fps value, e.g., \\\"23.976\\\" (default) or a fraction, e.g., \\\"30000/1001\\\"", NULL, 0, 0),
             OPT_STRING(0, "destfps", &param_destfps, "rate is any valid mpeg2 float fps value, e.g., \"29.97\" (default).", NULL, 0, 0),
@@ -962,8 +981,8 @@ int main(int argc, char *argv[])
     struct argparse argparse;
 
     // disable buffering on stdout and stderr
-    setbuf(stderr, NULL);
-    setbuf(stdout, NULL);
+    //setbuf(stderr, NULL);
+    //setbuf(stdout, NULL);
 
     printf("dgpulldown2 by Jason Stevens\n");
     printf("This version based off Version 1.0.11 by Donald A. Graft/Jetlag/timecop\n");
@@ -990,6 +1009,13 @@ int main(int argc, char *argv[])
         strcpy(OutputRate, param_destfps);
     printf("InputRate: %s\n", InputRate);
     printf("OutputRate: %s\n", OutputRate);
+
+    if (param_convert23)
+        Rate = CONVERT_23976_TO_29970;
+    if (param_convert24)
+        Rate = CONVERT_24000_TO_29970;
+    if (param_convert25)
+        Rate = CONVERT_25000_TO_29970;
 
     // check input
     if (input_filename == NULL) {
