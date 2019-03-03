@@ -55,7 +55,7 @@
 #include <math.h>
 #include <time.h>
 #include "argparse.h"
-#include "version.h"
+#include "dgpulldown_version.h"
 
  // these macros help with cross-platform
 #ifdef __MINGW32__

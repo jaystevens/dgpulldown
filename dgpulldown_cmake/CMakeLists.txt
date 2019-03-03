@@ -55,8 +55,8 @@ cmake_host_system_information(RESULT DGPULLDOWN_BUILD_HOST QUERY HOSTNAME)
 
 # setup version number in application
 configure_file (
-        "${CMAKE_CURRENT_SOURCE_DIR}/src/version.c.in"
-        "${CMAKE_CURRENT_SOURCE_DIR}/src/version.c"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/dgpulldown_version.c.in"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/dgpulldown_version.c"
 )
 
 # Visual Studio project generator x64 check
@@ -139,7 +139,7 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
-add_executable(dgpulldown  "src/dgpulldown.c" "src/version.c" "src/argparse.c")
+add_executable(dgpulldown  "src/dgpulldown.c" "src/dgpulldown_version.c" "src/argparse.c")
 set_target_properties(dgpulldown PROPERTIES C_STANDARD 11)
 set_target_properties(dgpulldown PROPERTIES C_STANDARD_REQUIRED ON)
 set_target_properties(dgpulldown PROPERTIES C_EXTENSIONS ON)
