@@ -222,6 +222,9 @@ static int read_buffer_load(void)
 	if (!read_buffer)
 		return 1;
 
+	if (read_buffer_size >= BUFFER_SIZE_256MB)
+	    av_log(AV_LOG_INFO, "reading %d MB chunk from file\n", (read_buffer_size / 1024 / 1024));
+
 	// read file into memory
 	read_cnt = (int)fread(read_buffer, 1, (size_t)read_buffer_size, input_fp);
 	if (!read_cnt) {
@@ -307,7 +310,10 @@ static int write_buffer_flush(void)
 	if (!write_buffer)
 		return 1;
 
-	// write buffer to file
+    if (write_buffer_size >= BUFFER_SIZE_256MB)
+        av_log(AV_LOG_INFO, "writing %d MB chunk to file\n", (write_buffer_size / 1024 / 1024));
+
+    // write buffer to file
 	if (fwrite(write_buffer, (size_t)write_used, 1, output_fp) != 1) {
 		av_log(AV_LOG_ERROR, "error flushing write buffer to file\n");
 		return 1;
