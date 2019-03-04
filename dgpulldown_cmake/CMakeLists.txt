@@ -124,6 +124,7 @@ endif()
 
 
 #if ("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
+#    message("release build optimizations")
 #    if (MSVC)
 #        # Maximum optimization in Release mode.
 #        add_compile_options("$<$<CONFIG:RELEASE>:/Ox>")
@@ -133,6 +134,11 @@ endif()
 #endif ()
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${DGPULLDOWN_C_FLAGS}")
+message("CMAKE_BUILD_TYPE: " ${CMAKE_BUILD_TYPE})
+message("CMAKE_C_FLAGS: " ${CMAKE_C_FLAGS})
+message("CMAKE_C_FLAGS_RELEASE: " ${CMAKE_C_FLAGS_RELEASE})
+message("CMAKE_C_FLAGS_DEBUG: " ${CMAKE_C_FLAGS_DEBUG})
+
 
 # setup runtime folder
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
