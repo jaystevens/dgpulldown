@@ -157,7 +157,7 @@ int rounded_fps;
 int field_count, pict, sec, minute, hour, drop_frame;
 int set_tc;
 
-static int read_buffer_init()
+static int read_buffer_init(void)
 {
 	int alloc_error = 0;
 
@@ -216,7 +216,7 @@ static int read_buffer_init()
 	return 0;
 }
 
-static int read_buffer_load()
+static int read_buffer_load(void)
 {
 	// if read buffer not initialized, return error
 	if (!read_buffer)
@@ -236,7 +236,7 @@ static int read_buffer_load()
 	return 0;
 }
 
-static void read_buffer_free()
+static void read_buffer_free(void)
 {
 	read_ptr = NULL;
 	if (read_buffer)
@@ -244,7 +244,7 @@ static void read_buffer_free()
 	read_buffer = NULL;
 }
 
-static int write_buffer_init()
+static int write_buffer_init(void)
 {
 	int alloc_error = 0;
 
@@ -301,7 +301,7 @@ static int write_buffer_init()
 	return 0;
 }
 
-static int write_buffer_flush()
+static int write_buffer_flush(void)
 {
 	// if write buffer not initialized, return error
 	if (!write_buffer)
@@ -320,7 +320,7 @@ static int write_buffer_flush()
 	return 0;
 }
 
-static void write_buffer_free()
+static void write_buffer_free(void)
 {
 	write_ptr = NULL;
 	if (write_buffer)
@@ -435,8 +435,7 @@ static void video_parser(void)
 {
 	unsigned char val, tc[4];
 	int trf;
-	int i = 0;
-	
+
 	// Inits.
 	state = NEED_FIRST_0;
 	found = 0;
@@ -890,6 +889,7 @@ static void generate_flags(void)
 
 static int process(void)
 {
+    int tmp_buffer_size;
     F = 0;
     field_count = 0;
     pict = 0;
@@ -898,8 +898,6 @@ static int process(void)
     hour = 0;
     drop_frame = 0;
     time_start = get_time_seconds();
-    int tmp_buffer_size;
-
 
     // Open the input file.
 	input_fp = fopen(input_filename, "rb");
