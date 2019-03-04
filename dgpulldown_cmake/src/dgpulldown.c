@@ -948,6 +948,33 @@ static int process(void)
         KillThread();
     }
 
+    // try to reduce the io buffer size if the file is not that big
+    if (file_size > BUFFER_SIZE_1536MB) {
+        read_buffer_size = BUFFER_SIZE_1800MB;
+        write_buffer_size = BUFFER_SIZE_1800MB;
+    } else if ((file_size > BUFFER_SIZE_1024MB) && (file_size <= BUFFER_SIZE_1536MB)) {
+        read_buffer_size = BUFFER_SIZE_1536MB;
+        write_buffer_size = BUFFER_SIZE_1536MB;
+    } else if ((file_size > BUFFER_SIZE_512MB) && (file_size <= BUFFER_SIZE_1024MB)) {
+        read_buffer_size = BUFFER_SIZE_1024MB;
+        write_buffer_size = BUFFER_SIZE_1024MB;
+    } else if ((file_size > BUFFER_SIZE_256MB) && (file_size <= BUFFER_SIZE_512MB)) {
+        read_buffer_size = BUFFER_SIZE_512MB;
+        write_buffer_size = BUFFER_SIZE_512MB;
+    } else if ((file_size > BUFFER_SIZE_128MB) && (file_size <= BUFFER_SIZE_256MB)) {
+        read_buffer_size = BUFFER_SIZE_256MB;
+        write_buffer_size = BUFFER_SIZE_256MB;
+    } else if ((file_size > BUFFER_SIZE_64MB) && (file_size <= BUFFER_SIZE_128MB)) {
+        read_buffer_size = BUFFER_SIZE_128MB;
+        write_buffer_size = BUFFER_SIZE_128MB;
+    } else if ((file_size > BUFFER_SIZE_16MB) && (file_size <= BUFFER_SIZE_64MB)) {
+        read_buffer_size = BUFFER_SIZE_64MB;
+        write_buffer_size = BUFFER_SIZE_64MB;
+    } else if ((file_size > BUFFER_SIZE_1MB) && (file_size <= BUFFER_SIZE_16MB)) {
+        read_buffer_size = BUFFER_SIZE_16MB;
+        write_buffer_size = BUFFER_SIZE_16MB;
+    }
+
     // init read and write buffers
     read_buffer_init();
     write_buffer_init();
