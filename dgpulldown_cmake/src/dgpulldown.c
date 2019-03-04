@@ -75,13 +75,18 @@ static const char *const usage[] = {
         NULL,
 };
 
+// file variables
 char *input_filename;
 char *output_filename;
+FILE *input_fp = NULL;
+FILE *output_fp = NULL;
 
+// stream detection variables
 #define STREAM_TYPE_ES 0
 #define STREAM_TYPE_PROGRAM 1
 int stream_type;
 
+// input variables
 #define CONVERT_NO_CHANGE       0
 #define CONVERT_23976_TO_29970  1
 #define CONVERT_24000_TO_29970  2
@@ -96,54 +101,9 @@ unsigned int TimeCodes = 1;
 unsigned int DropFrames = 2;
 unsigned int StartTime = 0;
 char HH[255] = { 0 }, MM[255] = { 0 }, SS[255] = { 0 }, FF[255] = { 0 };
-unsigned int Debug = 0;
-int inplace = 0;
 int tff = 1;
-static int output_m2v = 1;
 
-static void helpText(void)
-{
-	// TODO - fix this, it was copied from linux version
-	fprintf(stderr,
-		"Usage: dgpulldown input.m2v [options]\n"
-		"Options:\n"
-		"-o filename            File name for output file, if omitted, the name will be \"*.pulldown.m2v\".\n"
-		"-srcfps rate           Rate is any float fps value, e.g., \"23.976\" (default) or a fraction, e.g., \"30000/1001\"\n"
-		"-destfps rate          Rate is any valid mpeg2 float fps value, e.g., \"29.97\" (default).\n"
-		"                       Valid rates: 23.976, 24, 25, 29.97, 30, 50, 59.94, 60\n"
-		"-nom2v                 Do not create an output m2v file.\n"
-		"-inplace               Modify the input file instead of creating an output file. [WINDOWS ONLY]\n"
-		"-dumptc                Dump timecodes to \"*.timecodes.txt\". [WINDOWS ONLY]\n"
-		"-df                    Force dropframes.\n"
-		"-nodf                  Force no dropframes.\n"
-		"-start hh mm ss ff     Set start timecode.\n"
-		"-notc                  Do not set timecodes.\n"
-		"-bff                   Generate a BFF (Bottom Field First) output stream.\n"
-		"                       If absent, a TFF (Top Field First) stream is generated.\n"
-		"                       NTSC is BFF, PAL is TFF\n"
-		//"-interlaced            Turn off the progressive flag. [LINUX/MAC ONLY]\n"
-		//"                       Used to change BFF/TFF interlaced mode of output file.\n"
-		//"                       DO NOT USE WITH PULLDOWN OPTIONS\n"
-		"-h|-help|--help        Print this help message.\n"
-		"\n"
-		"If neither srcfps nor destfps is given, then no frame rate change is performed.\n"
-		"If srcfps is specified as equal to destfps, then all pulldown is removed and the\n"
-		"stream is flagged as having a rate equal to that specified in destfps.\n"
-		"\n"
-		"Example:\n"
-		"dgpulldown source.m2v -o flagged.m2v -srcfps 23.976 -destfps 29.97\n");
-}
-
-// Defines for the start code detection state machine.
-#define NEED_FIRST_0  0
-#define NEED_SECOND_0 1
-#define NEED_1        2
-
-FILE *input_fp = NULL;
-FILE *output_fp = NULL;
-FILE *debug_fp = NULL;
-//FILE *wfd = NULL;
-
+// io buffer variables
 #define BUFFER_SIZE 32768
 #define IO_BUFFER_SIZE 33554432
 unsigned char buffer[BUFFER_SIZE];
@@ -154,22 +114,29 @@ int Read;
 unsigned char bff_flags[MAX_PATTERN_LENGTH];
 unsigned char tff_flags[MAX_PATTERN_LENGTH];
 
-// For progress bar.
+// progress bar variables
 int64_t data_size;
 int64_t data_count;
+unsigned int time_start, time_now, time_elapsed;
+unsigned int time_last = 0;
+unsigned int percent = 0;
+
+// Defines for the start code detection state machine.
+#define NEED_FIRST_0  0
+#define NEED_SECOND_0 1
+#define NEED_1        2
+
+// process variables
 static int state, found;
 static int f, F, D;
 static int ref;
-int EOF_reached;
-float tfps, cfps;
+float tfps;
 int64_t current_num, current_den, target_num, target_den;
 int rate;
 int rounded_fps;
 int field_count, pict, sec, minute, hour, drop_frame;
 int set_tc;
-unsigned int time_start, time_now, time_elapsed;
-unsigned int time_last = 0;
-unsigned int percent = 0;
+
 
 static void KillThread(void)
 {
@@ -199,30 +166,9 @@ static unsigned int dg_timeGetTime(void)
 // read ahead (write behind) by using negative offsets.
 // Currently, it's only used for the 4-byte timecode.
 // The offset is ignored when not doing in-place operation.
-inline static void put_byte(int offset, unsigned char val)
+inline static void put_byte(unsigned char val)
 {
-	int64_t save, backup;
-
-	if (inplace)
-	{
-		// Save the file position.
-		save = ftello(input_fp);
-		// Calculate the amount to seek back to write this value.
-		// offset is relative to the position of the last read value.
-		backup = buffer + Read - Rdptr - offset;
-		// Seek back.
-		fseeko(input_fp, -backup, SEEK_CUR);
-		// Write the value.
-		//_write(wfd, &val, 1);
-		fwrite(&val, 1, 1, input_fp);
-		// Restore the file position to be ready for the next
-		// read buffer refill.
-		fseeko(input_fp, save, SEEK_SET);
-	}
-	else
-	{
-		fwrite(&val, 1, 1, output_fp);
-	}
+    fwrite(&val, 1, 1, output_fp);
 }
 
 // Get a byte from the stream. We do our own buffering
@@ -231,41 +177,13 @@ inline static void put_byte(int offset, unsigned char val)
 inline static unsigned char get_byte(void)
 {
 	unsigned char val;
-	if (inplace)
-	{
-		if (Rdptr > &buffer[Read-2])
-		{
-			// Incrementing to the next byte will take us outside the buffer,
-			// so we need to refill it.
-			//Read = _read(wfd, buffer, BUFFER_SIZE);
-			Read = (int)fread(&buffer, BUFFER_SIZE, 1, input_fp);
-			Rdptr = buffer;
-			if (Read < 1)
-			{
-				// No more data. Finish up.
-				fclose(input_fp);
-				if (Debug) fclose(debug_fp);
-				KillThread();
-			}
-			// We return the first byte of the buffer now.
-			val = *Rdptr;
-		}
-		else
-		{
-			// Increment the buffer pointer and return the pointed to byte.
-			val = *++Rdptr;
-		}
-	}
-	else
-	{
-		if (fread(&val, 1, 1, input_fp) != 1)
-		{
-			fclose(input_fp);
-			if (output_m2v && !inplace) fclose(output_fp);
-			if (Debug) fclose(debug_fp);
-			KillThread();
-		}
-	}
+
+    if (fread(&val, 1, 1, input_fp) != 1)
+    {
+        fclose(input_fp);
+        fclose(output_fp);
+        KillThread();
+    }
 	// progress output, update only once per second
 	data_count++;
 	time_now = dg_timeGetTime();
@@ -298,7 +216,6 @@ static void video_parser(void)
 	state = NEED_FIRST_0;
 	found = 0;
 	f = F = 0;
-	EOF_reached = 0;
 	data_count = 0;
 
 	// Let's go!
@@ -307,7 +224,7 @@ static void video_parser(void)
 		// Parse for start codes.
 		val = get_byte();
 
-	    if (output_m2v && !inplace) put_byte(0, val);
+	    put_byte(val);
 
 		switch (state)
 		{
@@ -336,7 +253,7 @@ static void video_parser(void)
 			// Found a start code.
 			found = 0;
 			val = get_byte();
-			if (output_m2v && !inplace) put_byte(0, val);
+			put_byte(val);
 
 			if (val == 0xb8)
 			{
@@ -358,57 +275,49 @@ static void video_parser(void)
 					hour %= 24;
 					//now write timecode
 					val = drop_frame | (hour << 2) | ((minute & 0x30) >> 4);
-					if (output_m2v) put_byte(-3, val);
+					put_byte(val);
 					val = ((minute & 0x0f) << 4) | 0x8 | ((sec & 0x38) >> 3);
-					if (output_m2v) put_byte(-2, val);
+					put_byte(val);
 					val = ((sec & 0x07) << 5) | ((pict & 0x1e) >> 1);
-					if (output_m2v) put_byte(-1, val);
+					put_byte(val);
 					val = (tc[3] & 0x7f) | ((pict & 0x1) << 7);
-					if (output_m2v) put_byte(0, val);
+					put_byte(val);
 				}
 				else
 				{
 					//just read timecode
 					val = get_byte();
-					if (output_m2v && !inplace) put_byte(0, val);
+					put_byte(val);
 					drop_frame = (val & 0x80) >> 7;
 					minute = (val & 0x03) << 4;
 					hour = (val & 0x7c) >> 2;
 					val = get_byte();
-					if (output_m2v && !inplace) put_byte(0, val);
+					put_byte(val);
 					minute |= (val & 0xf0) >> 4;
 					sec = (val & 0x07) << 3;
 					val = get_byte();
-					if (output_m2v && !inplace) put_byte(0, val);
+					put_byte(val);
 					sec |= (val & 0xe0) >> 5;
 					pict = (val & 0x1f) << 1;
 					val = get_byte();
-					if (output_m2v && !inplace) put_byte(0, val);
+					put_byte(val);
 					pict |= (val & 0x80) >> 7;
 				}
-				if (Debug) fprintf(debug_fp,"%7d  %02d:%02d:%02d%c%02d\n",F,hour,minute,sec,(drop_frame?',':'.'),pict);
 			}
 			else if (val == 0x00)
 			{
 				// Picture.
 				val = get_byte();
-				if (output_m2v && !inplace) put_byte(0, val);
+				put_byte(val);
 				ref = (val << 2);
 				val = get_byte();
-				if (output_m2v && !inplace) put_byte(0, val);
+				put_byte(val);
 				ref |= (val >> 6);
 				D = F + ref;
 				f++;
-				if (D >= MAX_PATTERN_LENGTH - 1)
-				{
-					if (inplace)
-						fclose(input_fp);
-					else
-					{
-						fclose(input_fp);
-						if (output_m2v)
-							fclose(output_fp);
-					}
+				if (D >= MAX_PATTERN_LENGTH - 1) {
+                    fclose(input_fp);
+                    fclose(output_fp);
 					fprintf(stderr, "Maximum filelength exceeded, aborting!");
 					KillThread();
 				}
@@ -417,25 +326,25 @@ static void video_parser(void)
 			{
 				// Sequence header.
 				val = get_byte();
-				if (output_m2v && !inplace) put_byte(0, val);
+				put_byte(val);
 				val = get_byte();
-				if (output_m2v && !inplace) put_byte(0, val);
+				put_byte(val);
 				val = get_byte();
-				if (output_m2v && !inplace) put_byte(0, val);
+				put_byte(val);
 				val = (get_byte() & 0xf0) | rate;
-				if (output_m2v) put_byte(0, val);
+				put_byte(val);
 			}
 			else if (val == 0xB5)
 			{
 				val = get_byte();
-				if (output_m2v && !inplace) put_byte(0, val);
+				put_byte(val);
 				if ((val & 0xf0) == 0x80)
 				{
 					// Picture coding extension.
 					val = get_byte();
-					if (output_m2v && !inplace) put_byte(0, val);
+					put_byte(val);
 					val = get_byte();
-					if (output_m2v && !inplace) put_byte(0, val);
+					put_byte(val);
 					val = get_byte();
 					//rewrite trf
 					trf = tff ? tff_flags[D] : bff_flags[D];
@@ -443,10 +352,10 @@ static void video_parser(void)
 					val |= (trf & 2) << 6;
 					val |= (trf & 1) << 1;
 					field_count += 2 + (trf & 1);
-					if (output_m2v) put_byte(0, val);
+					put_byte(val);
 					// Set progressive frame. This is needed for RFFs to work.
 					val = get_byte() | 0x80;
-					if (output_m2v) put_byte(0, val);
+					put_byte(val);
 				}
 				else if ((val & 0xf0) == 0x10)
 				{
@@ -454,7 +363,7 @@ static void video_parser(void)
 					// Clear progressive sequence. This is needed to
 					// get RFFs to work field-based.
 					val = get_byte() & ~0x08;
-					if (output_m2v) put_byte(0, val);
+					put_byte(val);
 				}
 			}
 		}
@@ -550,21 +459,18 @@ static int check_options(void)
 	else if (Rate == CONVERT_23976_TO_29970)
 	{
 		tfps = (float) 29.970;
-		cfps = (float) 23.976;
 		current_num = 24000;
 		current_den = 1001;
 	}
 	else if (Rate == CONVERT_24000_TO_29970)
 	{
 		tfps = (float) 29.970;
-		cfps = (float) 24.000;
 		current_num = 24;
 		current_den = 1;
 	}
 	else if (Rate == CONVERT_25000_TO_29970)
 	{
 		tfps = (float) 29.970;
-		cfps = (float) 25.000;
 		current_num = 25;
 		current_den = 1;
 	}
@@ -800,7 +706,6 @@ static void generate_flags(void)
 
 static int process(void)
 {
-	int inplace_tmp;
     F = 0;
     field_count = 0;
     pict = 0;
@@ -827,17 +732,12 @@ static int process(void)
 	}
 
     // Determine the stream type: ES or program.
-    // store inplace on a temp local value and change inplace to 0
-    // this simplifies setup of stream type
-    inplace_tmp = inplace;
-	inplace = 0;
     determine_stream_type();
     if (stream_type == STREAM_TYPE_PROGRAM) {
         fprintf(stderr, "The input file must be an elementary\nstream, not a program stream.");
         KillThread();
     }
-    // reset inplace back to what it was
-	inplace = inplace_tmp;
+
 
     // Get file data_size
 	fseeko(input_fp, 0, SEEK_END);  // TODO - check seek worked
@@ -846,64 +746,28 @@ static int process(void)
 	fclose(input_fp);
 
     // Re-open the input file.
-    if (inplace) {
-        //_close(wfd);
-        //wfd = _open(input_filename, _O_RANDOM | _O_BINARY | _O_RDWR);
-        input_fp = fopen(input_filename, "rb+");
-        if (!input_fp)
-        {
-            fprintf(stderr, "Could not open the input file!");
-            KillThread();
-        }
-        //Read = _read(wfd, buffer, BUFFER_SIZE);
-        Read = (int)fread(&buffer, BUFFER_SIZE, 1, input_fp);
-        Rdptr = buffer - 1;
+    input_fp = fopen(input_filename, "rb");
+    if (!input_fp)
+    {
+        fprintf(stderr, "Could not open the input file!");
+        KillThread();
     }
-    else {
-        input_fp = fopen(input_filename, "rb");
-        if (!input_fp)
-        {
-            fprintf(stderr, "Could not open the input file!");
-            KillThread();
-        }
-        if (setvbuf(input_fp, NULL, _IOFBF, IO_BUFFER_SIZE) < 0) {
-            fprintf(stderr, "Unable to setup buffering on input file!");
-            KillThread();
-        }
+    if (setvbuf(input_fp, NULL, _IOFBF, IO_BUFFER_SIZE) < 0) {
+        fprintf(stderr, "Unable to setup buffering on input file!");
+        KillThread();
     }
-
-
 
     // Open the output file.
-    if (output_m2v && !inplace) {
-        output_fp = fopen(output_filename, "wb");
-        if (output_fp == NULL)
-        {
-            fprintf(stderr, "Could not open the output file\n%s!", output_filename);
-            KillThread();
-        }
-        if (setvbuf(output_fp, NULL, _IOFBF, IO_BUFFER_SIZE) < 0) {
-            fprintf(stderr, "Unable to setup buffering on output file!");
-            fclose(output_fp);
-            KillThread();
-        }
+    output_fp = fopen(output_filename, "wb");
+    if (output_fp == NULL)
+    {
+        fprintf(stderr, "Could not open the output file\n%s!", output_filename);
+        KillThread();
     }
-
-    if (Debug) {
-        if (CliActive) {
-            strcat(output_filename, ".timecode.txt");
-            debug_fp = fopen(output_filename, "w");
-        }
-        else {
-            strcpy(output_filename, input_filename);
-            strcat(output_filename, ".pulldown.m2v.timecode.txt");
-            debug_fp = fopen(output_filename, "w");
-        }
-        if (!debug_fp) {
-            fprintf(stderr, "Could not open the timecode file!");
-            KillThread();
-        }
-        fprintf(debug_fp,"   field   frame  HH:MM:SSdFF\n");
+    if (setvbuf(output_fp, NULL, _IOFBF, IO_BUFFER_SIZE) < 0) {
+        fprintf(stderr, "Unable to setup buffering on output file!");
+        fclose(output_fp);
+        KillThread();
     }
 
     // Generate the flags sequences.
@@ -929,7 +793,6 @@ int main(int argc, char *argv[])
     int param_convert25 = 0;
     char *param_srcfps = NULL;
     char *param_destfps = NULL;
-    int param_nom2v = 0;
     int param_bff = 0;
     int param_tff = 0;
     int param_df = 0;
@@ -951,9 +814,6 @@ int main(int argc, char *argv[])
             OPT_STRING(0, "destfps", &param_destfps, "rate is any valid mpeg2 float fps value, e.g., \"29.97\" (default).", NULL, 0, 0),
             // "Valid rates: 23.976, 24, 25, 29.97, 30, 50, 59.94, 60"
             OPT_GROUP("params"),
-            OPT_BOOLEAN(0, "dumptc", &Debug, "dumptc", NULL, 0, 0),
-            OPT_BOOLEAN(0, "nom2v", &param_nom2v, "nom2v", NULL, 0, 0),
-            OPT_BOOLEAN(0, "inplace", &inplace, "inplace", NULL, 0, 0),
             OPT_BOOLEAN(0, "bff", &param_bff, "bff", NULL, 0, 0),
             OPT_BOOLEAN(0, "tff", &param_tff, "tff", NULL, 0, 0),
             OPT_BOOLEAN(0, "df", &param_df, "force drop frame", NULL, 0, 0),
@@ -1011,16 +871,10 @@ int main(int argc, char *argv[])
         printf("no input file specified [ -i input.m2v ]\n");
     }
 
-    if (output_filename == NULL && inplace == 0) {
+    if (output_filename == NULL) {
         init_exit = 1;
         printf("no output file specified [ -o output.m2v ]\n");
     }
-
-    if (param_nom2v) {
-    	// TODO - can this be set directly?
-    	output_m2v = 1;
-    }
-
 
     // BFF / TFF
     if (param_bff)
