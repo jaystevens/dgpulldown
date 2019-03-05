@@ -330,18 +330,15 @@ static void write_buffer_free(void)
 
 static unsigned int get_time_seconds(void)
 {
-#if defined(_WIN32)  // windows
+//#if defined(_WIN32)  // windows
     struct timespec spec;
     timespec_get(&spec, TIME_UTC);
     return (unsigned int) spec.tv_sec;
-#else  // linux and MacOS
-    unsigned int current_time = 0;
-    struct timeval spec;
-    gettimeofday(&spec, NULL);
-    current_time = (unsigned int)spec.tv_sec;
-    current_time = current_time;  // tv_sec on linux returns msec
-    return current_time;
-#endif
+//#else  // linux and MacOS
+//    struct timeval spec;
+//    gettimeofday(&spec, NULL);
+//    return (unsigned int)spec.tv_sec;
+//#endif
 }
 
 void KillThread(void)
