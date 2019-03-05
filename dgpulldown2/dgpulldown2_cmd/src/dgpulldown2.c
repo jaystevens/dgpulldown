@@ -73,7 +73,7 @@
 #endif
 
 static const char *const usage[] = {
-        "dgpulldown [options]",
+        "dgpulldown2 [options]",
         NULL,
 };
 
@@ -120,10 +120,7 @@ int tff = 1;
 //#define BUFFER_SIZE_1800MB 1887436800  // 1800MB
 #define BUFFER_SIZE_1800MB (int64_t) 3774873600  // 1800MB
 
-size_t system_mem_total = 0;
-size_t system_mem_free = 0;
-size_t system_mem_usable = 0;
-size_t max_buffer_size = 0;
+
 int lowmem = 0;
 
 // read buffer
@@ -171,6 +168,11 @@ int set_tc;
 
 static int detect_buffer_size(void)
 {
+    size_t system_mem_total = 0;
+    size_t system_mem_free = 0;
+    size_t system_mem_usable = 0;
+    size_t max_buffer_size = 0;
+
     if (lowmem) {
         // use low memory buffers
         av_log(AV_LOG_INFO, "lowmem mode\n");
@@ -187,8 +189,8 @@ static int detect_buffer_size(void)
             // memory detect failed, use 1MB chunks
             max_buffer_size = BUFFER_SIZE_1MB;
         } else {
-            // less than 1 GB of free memory, do not use more that 50% of free mem
-            system_mem_usable = ((system_mem_free / 4) * 3);  // only use 3/4 of system free max
+            // do not use more than 75% of total system memory for buffers
+            system_mem_usable = ((system_mem_total / 4) * 3);  // only use 3/4 of system memory
             max_buffer_size = system_mem_usable / 2;  // we need 2 buffers so divide by 2
             // make sure we use at least 1 MB buffer size
             if (max_buffer_size < BUFFER_SIZE_1MB)
@@ -366,6 +368,25 @@ void KillThread(void)
     exit(0);
 }
 
+static void do_progress(void)
+{
+    time_now = get_time_seconds();
+    if (((time_now - time_last) >= 1) && (file_size > 0)) {
+        if (time_now >= time_start)
+            time_elapsed = time_now - time_start;
+        else
+#if defined(_WIN32)
+            time_elapsed = (time_now - time_start) + 1;
+#else
+            time_elapsed = (unsigned int) (((4294967295 - time_start) + time_now + 1) / 1000);
+#endif
+        time_last = time_now;
+        percent = (unsigned int) (data_processed * 100 / file_size);
+        av_log(AV_LOG_INFO, "%02d%% %7d input frames : output time %02d:%02d:%02d%c%02d @ %6.3f [elapsed %d sec]\n",
+               percent, F, hour, minute, sec, (drop_frame ? ',' : '.'), pict, tfps, time_elapsed);
+    }
+}
+
 inline static void put_byte(unsigned char val)
 {
     if (!write_ptr) {
@@ -383,25 +404,6 @@ inline static void put_byte(unsigned char val)
     } else {
         // advance write pointer if we did not flush
         write_ptr++;
-    }
-}
-
-static void do_progress(void)
-{
-    time_now = get_time_seconds();
-    if (((time_now - time_last) >= 1) && (file_size > 0)) {
-        if (time_now >= time_start)
-            time_elapsed = time_now - time_start;
-        else
-#if defined(_WIN32)
-            time_elapsed = (time_now - time_start) + 1;
-#else
-        time_elapsed = (unsigned int) (((4294967295 - time_start) + time_now + 1) / 1000);
-#endif
-        time_last = time_now;
-        percent = (unsigned int) (data_processed * 100 / file_size);
-        av_log(AV_LOG_INFO, "%02d%% %7d input frames : output time %02d:%02d:%02d%c%02d @ %6.3f [elapsed %d sec]\n",
-               percent, F, hour, minute, sec, (drop_frame ? ',' : '.'), pict, tfps, time_elapsed);
     }
 }
 
@@ -750,9 +752,9 @@ static int check_options(void)
             char *p;
 
             p = InputRate;
-            sscanf(p, "%I64Ld", &current_num);
+            sscanf(p, "%I64Ld", (long long int*)&current_num);
             while (*p++ != '/');
-            sscanf(p, "%I64Ld", &current_den);
+            sscanf(p, "%I64Ld", (long long int*)&current_den);
         }
         else {
             // Have a decimal specified.
@@ -958,6 +960,8 @@ static int process(void)
     drop_frame = 0;
     time_start = get_time_seconds();
 
+    av_log(AV_LOG_INFO, "Processing, please wait...\n");
+
     // Open the input file.
     input_fp = fopen(input_filename, "rb");
     if (!input_fp) {
@@ -1081,8 +1085,8 @@ int main(int argc, char *argv[])
     // init vars
     strcpy(InputRate, "23.976");
     strcpy(OutputRate, "29.970");
-    //Rate = CONVERT_NO_CHANGE;
-    Rate = CONVERT_CUSTOM;
+    Rate = CONVERT_NO_CHANGE;
+    //Rate = CONVERT_CUSTOM;
 
     // parse args
     argparse_init(&argparse, options, usage, 0);
@@ -1116,6 +1120,11 @@ int main(int argc, char *argv[])
         av_log(AV_LOG_ERROR, "no output file specified [ -o output.m2v ]\n");
     }
 
+    if (input_filename == output_filename) {
+        init_exit = 1;
+        av_log(AV_LOG_ERROR, "input and output can not be the same file!\n");
+    }
+
     // BFF / TFF
     if (param_bff)
         tff = 0;
@@ -1132,7 +1141,10 @@ int main(int argc, char *argv[])
     if (param_notc)
         TimeCodes = 0;
 
-    av_log_newline();
+    if (init_exit) {
+        return 1;
+    }
+
     av_log(AV_LOG_INFO, "Params:\n");
     switch (Rate) {
         case CONVERT_NO_CHANGE:
@@ -1175,11 +1187,6 @@ int main(int argc, char *argv[])
             }
     */
 
-    if (init_exit) {
-        return 1;
-    }
-
-     av_log(AV_LOG_INFO, "Processing, please wait...\n");
     process();
     return 0;
 }
