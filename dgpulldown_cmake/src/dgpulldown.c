@@ -415,8 +415,8 @@ inline static unsigned char get_byte(void)
     data_count++;
     // increment read timer
     read_timer++;
-    // only run progress code every 1024 get_bytes
-    if (read_timer > 1024) {
+    // only run progress code every 512K [52488]
+    if (read_timer > 524288) {
         read_timer = 0;
         time_now = get_time_seconds();
         if (((time_now - time_last) >= 1) && (file_size > 0)) {
