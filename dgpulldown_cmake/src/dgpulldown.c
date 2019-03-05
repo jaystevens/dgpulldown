@@ -133,6 +133,7 @@ unsigned char *read_ptr = NULL;
 uint64_t read_cnt = 0;
 uint64_t read_used = 0;
 uint64_t read_total = 0;
+uint64_t read_timer = 0;
 
 // write buffer
 size_t write_buffer_size = BUFFER_SIZE_1800MB;
@@ -236,6 +237,8 @@ static int read_buffer_init(void)
     read_used = 0;
     // reset read total
     read_total = 0;
+    // reset read timer
+    read_timer = 0;
 
     return 0;
 }
@@ -330,15 +333,15 @@ static void write_buffer_free(void)
 
 static unsigned int get_time_seconds(void)
 {
-//#if defined(_WIN32)  // windows
+#if defined(_WIN32)  // windows
     struct timespec spec;
     timespec_get(&spec, TIME_UTC);
     return (unsigned int) spec.tv_sec;
-//#else  // linux and MacOS
-//    struct timeval spec;
-//    gettimeofday(&spec, NULL);
-//    return (unsigned int)spec.tv_sec;
-//#endif
+#else  // linux and MacOS
+    struct timeval spec;
+    gettimeofday(&spec, NULL);
+    return (unsigned int)spec.tv_sec;
+#endif
 }
 
 void KillThread(void)
@@ -363,7 +366,7 @@ void KillThread(void)
     exit(0);
 }
 
-inline static void put_byte(unsigned char *val_ptr)
+static void put_byte(unsigned char *val_ptr)
 {
     if (!write_ptr) {
         av_log(AV_LOG_ERROR, "tried to write to buffer memory that is not initialized\n");
@@ -383,7 +386,7 @@ inline static void put_byte(unsigned char *val_ptr)
     }
 }
 
-inline static unsigned char* get_byte()
+static unsigned char* get_byte()
 {
     unsigned char *val_ptr;
 
@@ -410,20 +413,26 @@ inline static unsigned char* get_byte()
 
     // progress output, update only once per second
     data_count++;
-    time_now = get_time_seconds();
-    if (((time_now - time_last) >= 1) && (file_size > 0)) {
-        if (time_now >= time_start)
-            time_elapsed = time_now - time_start;
-        else
+    // increment read timer
+    read_timer++;
+    // only run progress code every 1024 get_bytes
+    if (read_timer > 1024) {
+        read_timer = 0;
+        time_now = get_time_seconds();
+        if (((time_now - time_last) >= 1) && (file_size > 0)) {
+            if (time_now >= time_start)
+                time_elapsed = time_now - time_start;
+            else
 #if defined(_WIN32)
-            time_elapsed = (time_now - time_start) + 1;
+                time_elapsed = (time_now - time_start) + 1;
 #else
-            time_elapsed = (unsigned int)(((4294967295 - time_start) + time_now + 1) / 1000);
+                time_elapsed = (unsigned int) (((4294967295 - time_start) + time_now + 1) / 1000);
 #endif
-        time_last = time_now;
-        percent = (unsigned int)(data_count * 100 / file_size);
-        av_log(AV_LOG_INFO, "%02d%% %7d input frames : output time %02d:%02d:%02d%c%02d @ %6.3f [elapsed %d sec]\n",
-            percent, F, hour, minute, sec, (drop_frame ? ',' : '.'), pict, tfps, time_elapsed);
+            time_last = time_now;
+            percent = (unsigned int) (data_count * 100 / file_size);
+            av_log(AV_LOG_INFO, "%02d%% %7d input frames : output time %02d:%02d:%02d%c%02d @ %6.3f [elapsed %d sec]\n",
+                   percent, F, hour, minute, sec, (drop_frame ? ',' : '.'), pict, tfps, time_elapsed);
+        }
     }
 
     return val_ptr;
