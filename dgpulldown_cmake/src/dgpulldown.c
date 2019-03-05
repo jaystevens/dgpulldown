@@ -80,6 +80,7 @@ static const char *const usage[] = {
 // functions
 void KillThread(void);
 size_t getMemorySize( );  // define getMemorySize from getMemorySize.c
+size_t getMemoryFree( );  // define getMemoryFree from getMemorySize.c
 
 // file variables
 char *input_filename;
@@ -119,9 +120,11 @@ int tff = 1;
 //#define BUFFER_SIZE_1800MB 1887436800  // 1800MB
 #define BUFFER_SIZE_1800MB (int64_t) 3774873600  // 1800MB
 
-size_t system_memory = 0;
-size_t system_memory_usable = 0;
+size_t system_mem_total = 0;
+size_t system_mem_free = 0;
+size_t system_mem_usable = 0;
 size_t max_buffer_size = 0;
+int lowmem = 0;
 
 // read buffer
 size_t read_buffer_size = BUFFER_SIZE_1800MB;
@@ -129,6 +132,7 @@ unsigned char *read_buffer = NULL;
 unsigned char *read_ptr = NULL;
 uint64_t read_cnt = 0;
 uint64_t read_used = 0;
+uint64_t read_total = 0;
 
 // write buffer
 size_t write_buffer_size = BUFFER_SIZE_1800MB;
@@ -166,33 +170,47 @@ int set_tc;
 
 static int detect_buffer_size(void)
 {
-    system_memory = getMemorySize();
-    av_log(AV_LOG_INFO, "system memory: %d MB\n", (system_memory / 1024 / 1024));
-
-    if (system_memory == 0) {
-        // memory detect failed, use 1MB chunks
-        max_buffer_size = BUFFER_SIZE_1MB;
-    } else if (system_memory < 1073741824){
-        system_memory_usable = system_memory / 2;
-        max_buffer_size = system_memory_usable / 4;  // 1/4 of system memory per buffer, 1/2 total
-    } else {
-        system_memory_usable = (system_memory - (1073741824));
-        max_buffer_size = system_memory_usable / 2;
-    }
-
-    if (file_size == 0 || max_buffer_size == 0) {
-        av_log(AV_LOG_WARNING, "unable to determine optimal buffer size based on file size, using 1 MB buffers\n");
+    if (lowmem) {
+        // use low memory buffers
+        av_log(AV_LOG_INFO, "lowmem mode\n");
         read_buffer_size = BUFFER_SIZE_1MB;
         write_buffer_size = BUFFER_SIZE_1MB;
-    } else if (file_size <= max_buffer_size) {
-        av_log(AV_LOG_INFO, "using file size as buffer size\n");
-        read_buffer_size = file_size;
-        write_buffer_size = file_size;
     } else {
-        av_log(AV_LOG_INFO, "file bigger than available memory, using chunked reading\n");
-        read_buffer_size = max_buffer_size;
-        write_buffer_size = max_buffer_size;
+        system_mem_total = getMemorySize();
+        av_log(AV_LOG_INFO, "system memory total: %d MB\n", (system_mem_total / 1024 / 1024));
+        system_mem_free = getMemoryFree();
+        av_log(AV_LOG_INFO, "system memory free : %d MB\n", (system_mem_free / 1024 / 1024));
+
+        // detect max buffer size based on free memory
+        if (system_mem_free == 0) {
+            // memory detect failed, use 1MB chunks
+            max_buffer_size = BUFFER_SIZE_1MB;
+        } else {
+            // less than 1 GB of free memory, do not use more that 50% of free mem
+            system_mem_usable = ((system_mem_free / 4) * 3);  // only use 3/4 of system free max
+            max_buffer_size = system_mem_usable / 2;  // we need 2 buffers so divide by 2
+            // make sure we use at least 1 MB buffer size
+            if (max_buffer_size < BUFFER_SIZE_1MB)
+                max_buffer_size = BUFFER_SIZE_1MB;
+        }
+        //max_buffer_size = BUFFER_SIZE_512MB;
+        av_log(AV_LOG_INFO, "max buffer size: %d MB\n", (max_buffer_size / 1024 / 1024));
+
+        if (file_size == 0 || max_buffer_size == 0) {
+            av_log(AV_LOG_WARNING, "unable to determine optimal buffer size based on file size, using 1 MB buffers\n");
+            read_buffer_size = BUFFER_SIZE_1MB;
+            write_buffer_size = BUFFER_SIZE_1MB;
+        } else if (file_size <= max_buffer_size) {
+            av_log(AV_LOG_INFO, "using file size as buffer size\n");
+            read_buffer_size = file_size;
+            write_buffer_size = file_size;
+        } else {
+            av_log(AV_LOG_INFO, "file bigger than available memory, using chunked reading\n");
+            read_buffer_size = max_buffer_size;
+            write_buffer_size = max_buffer_size;
+        }
     }
+
     av_log(AV_LOG_INFO, "read buffer size : %d MB\n", (read_buffer_size / 1024 / 1024));
     av_log(AV_LOG_INFO, "write buffer size: %d MB\n", (write_buffer_size / 1024 / 1024));
 
@@ -201,8 +219,6 @@ static int detect_buffer_size(void)
 
 static int read_buffer_init(void)
 {
-    int alloc_error = 0;
-
     // allocate memory for read buffer
     read_buffer = malloc(read_buffer_size);
     if (!read_buffer) {
@@ -218,6 +234,8 @@ static int read_buffer_init(void)
     read_cnt = 0;
     // reset read used
     read_used = 0;
+    // reset read total
+    read_total = 0;
 
     return 0;
 }
@@ -228,11 +246,15 @@ static int read_buffer_load(void)
     if (!read_buffer)
         return 1;
 
+    if (read_total >= file_size && file_size != 0)
+        KillThread();
+
     if (read_buffer_size >= BUFFER_SIZE_256MB)
         av_log(AV_LOG_INFO, "reading %d MB chunk from file\n", (read_buffer_size / 1024 / 1024));
 
     // read file into memory
     read_cnt = (int)fread(read_buffer, 1, read_buffer_size, input_fp);
+    read_total += read_cnt;
     if (!read_cnt) {
         // at end of file, exit
         KillThread();
@@ -343,7 +365,6 @@ void KillThread(void)
     av_log(AV_LOG_INFO, "Done - took: %d seconds\n", (time_now - time_start));
     exit(0);
 }
-
 
 inline static void put_byte(unsigned char val)
 {
@@ -983,6 +1004,7 @@ int main(int argc, char *argv[])
             OPT_BOOLEAN(0, "nodf", &param_nodf, "force non drop frame", NULL, 0, 0),
             OPT_BOOLEAN(0, "notc", &param_notc, "do not set timecodes", NULL, 0, 0),
             OPT_STRING(0, "start", &param_start, "set start timecode: hh mm ss ff", NULL, 0, 0),
+            OPT_BOOLEAN(0, "lowmem", &lowmem, "use 1 MB buffers", NULL, 0, 0),
             OPT_END(),
     };
     struct argparse argparse;
