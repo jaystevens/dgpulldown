@@ -148,7 +148,7 @@ unsigned char tff_flags[MAX_PATTERN_LENGTH];
 
 // progress bar variables
 uint64_t file_size;
-uint64_t data_count;
+uint64_t data_processed;
 unsigned int time_start, time_now, time_elapsed;
 unsigned int time_last = 0;
 unsigned int percent = 0;
@@ -256,7 +256,7 @@ static int read_buffer_load(void)
         av_log(AV_LOG_INFO, "reading %d MB chunk from file\n", (read_buffer_size / 1024 / 1024));
 
     // read file into memory
-    read_cnt = (int)fread(read_buffer, 1, read_buffer_size, input_fp);
+    read_cnt = (int64_t)fread(read_buffer, 1, read_buffer_size, input_fp);
     read_total += read_cnt;
     if (!read_cnt) {
         // at end of file, exit
@@ -386,6 +386,25 @@ inline static void put_byte(unsigned char val)
     }
 }
 
+static void do_progress(void)
+{
+    time_now = get_time_seconds();
+    if (((time_now - time_last) >= 1) && (file_size > 0)) {
+        if (time_now >= time_start)
+            time_elapsed = time_now - time_start;
+        else
+#if defined(_WIN32)
+            time_elapsed = (time_now - time_start) + 1;
+#else
+        time_elapsed = (unsigned int) (((4294967295 - time_start) + time_now + 1) / 1000);
+#endif
+        time_last = time_now;
+        percent = (unsigned int) (data_processed * 100 / file_size);
+        av_log(AV_LOG_INFO, "%02d%% %7d input frames : output time %02d:%02d:%02d%c%02d @ %6.3f [elapsed %d sec]\n",
+               percent, F, hour, minute, sec, (drop_frame ? ',' : '.'), pict, tfps, time_elapsed);
+    }
+}
+
 inline static unsigned char get_byte(void)
 {
     unsigned char val;
@@ -398,41 +417,28 @@ inline static unsigned char get_byte(void)
     if (!read_ptr) {
         read_buffer_load();
     }
+
+    // load chunk from memory
+    if (read_used >= read_cnt) {
+        if (read_buffer_load())
+            KillThread();
+    }
+
     // get value from read pointer
     val = *read_ptr;
     // add 1 to read used
     read_used++;
-    // if at end of read buffer, load another chunk into read buffer
-    if (read_used > read_cnt) {
-        if (read_buffer_load())
-            KillThread();
-    } else {
-        // advance read pointer if we did not load a new chunk
-        read_ptr++;
-    }
+    // advance read pointer if we did not load a new chunk
+    read_ptr++;
 
-    // progress output, update only once per second
-    data_count++;
+    // progress output, display an update once per second
+    data_processed++;
     // increment read timer
     read_timer++;
-    // only run progress code every 512K [52488]
-    if (read_timer > 524288) {
+    // only run progress code every 1MB [1048576] - the time syscall is slow
+    if (read_timer > 1048576) {
         read_timer = 0;
-        time_now = get_time_seconds();
-        if (((time_now - time_last) >= 1) && (file_size > 0)) {
-            if (time_now >= time_start)
-                time_elapsed = time_now - time_start;
-            else
-#if defined(_WIN32)
-                time_elapsed = (time_now - time_start) + 1;
-#else
-                time_elapsed = (unsigned int) (((4294967295 - time_start) + time_now + 1) / 1000);
-#endif
-            time_last = time_now;
-            percent = (unsigned int) (data_count * 100 / file_size);
-            av_log(AV_LOG_INFO, "%02d%% %7d input frames : output time %02d:%02d:%02d%c%02d @ %6.3f [elapsed %d sec]\n",
-                   percent, F, hour, minute, sec, (drop_frame ? ',' : '.'), pict, tfps, time_elapsed);
-        }
+        do_progress();
     }
 
     return val;
@@ -447,12 +453,12 @@ static void video_parser(void)
     state = NEED_FIRST_0;
     found = 0;
     f = F = 0;
-    data_count = 0;  // progress bar
+    data_processed = 0;  // progress bar
 
     // Let's go!
     while(1)
     {
-        // Parse for start codes.
+        // start looking for mpeg2 start code: 0x00 0x00 0x01
         val = get_byte();
         put_byte(val);
 
@@ -484,7 +490,7 @@ static void video_parser(void)
             put_byte(val);
 
             if (val == 0xb8) {
-                // GOP.
+                // GOP - 0xB8 - 4 bytes long
                 F += f;
                 f = 0;
                 if (set_tc) {
@@ -529,7 +535,11 @@ static void video_parser(void)
                 }
             }
             else if (val == 0x00) {
-                // Picture.
+                // Picture - 0x00 - 4 bytes long
+                // temperal sequence number - byte 4 bits 0-7, byte 5 bits 6-7
+                // frame type - byte 5 bits 3-5: 1=I, 2=P, 3=B, 4=D
+                // VBV Delay - byte 5 bits 0-2, byte 6 bits 0-7, byte 7 bits 3-7
+                // mpeg2 only - byte 7 bits 2
                 val = get_byte();
                 put_byte(val);
                 ref = (val << 2);
@@ -544,7 +554,35 @@ static void video_parser(void)
                 }
             }
             else if ((rate != -1) && (val == 0xB3)) {
-                // Sequence header.
+                // Sequence header - 0xB3 - variable length
+                // horizontal size - byte 4 bits 0-7, byte 5 bits 4-7
+                // vertical size - byte 5 bits 0-3, byte 6 bits 0-7
+                // aspect ratio - byte 7 bits 4-7
+                //      valid aspect ratios:
+                //      0 = forbidden
+                //      1 = 1:1
+                //      2 = 4:3
+                //      3 = 16:9
+                //      2.21:1 (not used in DVD)
+                //      5-15: reserved
+                // frame rate - byte 7 bits 0-3
+                //      valid frame rates:
+                //      0 = forbidden
+                //      1 = 23.976
+                //      2 = 24
+                //      3 = 25
+                //      4 = 29.97
+                //      5 = 30
+                //      6 = 50
+                //      7 = 59.94
+                //      8 = 60
+                //      9-15 = reserved
+                // bit rate - byte 8 bits 0-7, byte 9 bits 0-7, byte 10 bits 6-7
+                // <value 1> - byte 10 bit 5
+                // vbv buffer size - byte 10 bits 0-4, byte 11 bits 3-7
+                // constrained parameters flag - byte 11 bit 2
+                // load intra quantiser matrix - byte 11 bit 1
+                // (load non-intra quantiser matrix) - byte 11 bit 0
                 val = get_byte();
                 put_byte(val);
                 val = get_byte();
@@ -556,10 +594,11 @@ static void video_parser(void)
                 put_byte(val);
             }
             else if (val == 0xB5) {
+                // sequence extension - 0xB5 - first 4 bits of next byte define extension type
                 val = get_byte();
                 put_byte(val);
                 if ((val & 0xf0) == 0x80) {
-                    // Picture coding extension.
+                    // Picture coding extension - bits [1000] 0x80 - variable length
                     val = get_byte();
                     put_byte(val);
                     val = get_byte();
@@ -577,7 +616,20 @@ static void video_parser(void)
                     put_byte(val);
                 }
                 else if ((val & 0xf0) == 0x10) {
-                    // Sequence extension
+                    // Sequence extension - bits [0001] 0x10 - fixed length
+                    // extension id - byte 4 bits 4-7
+                    // profile and level - byte 4 bits 0-3, byte 5 bits 4-7
+                    // progressive_sequence - byte 5 bit 3
+                    // chroma_format -  byte 5 bits 1-2
+                    // horizontal size extension - byte 5 bit 0, byte 6 bit 7
+                    // vertial size extension - byte 6 bits 5-6
+                    // bit rate extension - byte 6 bits 0-4, byte 7 bits 1-7
+                    // <value 1> - byte 7 bit 0
+                    // vbv buffer size extension - byte 8 bits 0-7
+                    // low delay - byte 9 bit 7
+                    // frame rate extension n - byte 9 bits 5-6
+                    // frame rate extension d - byte 9 bits 0-4
+
                     // Clear progressive sequence. This is needed to
                     // get RFFs to work field-based.
                     val = get_byte() & ~0x08;
@@ -936,7 +988,7 @@ static int process(void)
         av_log(AV_LOG_ERROR, "error seeking to end of file\n");
         KillThread();
     }
-    file_size = ftello(input_fp);
+    file_size = (uint64_t)ftello(input_fp);
     if (fseeko(input_fp, 0, SEEK_SET)) {
         av_log(AV_LOG_ERROR, "error seeking to start of file\n");
         KillThread();
@@ -1021,9 +1073,9 @@ int main(int argc, char *argv[])
 
     printf("dgpulldown2 by Jason Stevens\n");
     printf("This version based off Version 1.0.11 by Donald A. Graft/Jetlag/timecop\n");
-    printf("Version: %s\n", DGPULLDOWN_VERSION_FULL);
+    printf("Version: %s\n", DGPULLDOWN2_VERSION_FULL);
     printf("Compiler: %s %s\n", COMPILER_NAME, COMPILER_VER);
-    printf("compiled on: %s @ %s\n", __TIMESTAMP__, DGPULLDOWN_BUILD_HOST);
+    printf("compiled on: %s @ %s\n", __TIMESTAMP__, DGPULLDOWN2_BUILD_HOST);
     printf("\n");
 
     // init vars
