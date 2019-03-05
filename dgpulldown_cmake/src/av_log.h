@@ -2,8 +2,8 @@
 // Created by jaystevens on 12/1/2018.
 //
 
-#ifndef QT_TOOLS_AV_LOG_H
-#define QT_TOOLS_AV_LOG_H
+#ifndef AV_LOG_H
+#define AV_LOG_H
 
 // print no output
 #define AV_LOG_QUIET   -8
@@ -31,4 +31,4 @@ void av_log_set_level(int level);
 void av_log(int level, const char *fmt, ...);
 void av_log_newline(void);
 
-#endif //QT_TOOLS_AV_LOG_H
+#endif //AV_LOG_H
