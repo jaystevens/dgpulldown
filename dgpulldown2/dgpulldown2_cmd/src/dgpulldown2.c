@@ -56,7 +56,7 @@
 #include <time.h>
 #include "argparse.h"
 #include "av_log.h"
-#include "dgpulldown_version.h"
+#include "dgpulldown2_version.h"
 
 
  // these macros help with cross-platform

@@ -1,5 +1,5 @@
-#ifndef DGPULLDOWN_VERSION_H
-#define DGPULLDOWN_VERSION_H
+#ifndef DGPULLDOWN2_VERSION_H
+#define DGPULLDOWN2_VERSION_H
 
 
 // compiler detection
@@ -42,12 +42,12 @@
 #endif
 
 
-extern const int DGPULLDOWN_VERSION_MAJOR;
-extern const int DGPULLDOWN_VERSION_MINOR;
-extern const int DGPULLDOWN_VERSION_PATCH;
-extern const char* DGPULLDOWN_VERSION;
-extern const char* DGPULLDOWN_VERSION_FULL;
-extern const char* DGPULLDOWN_BUILD_HOST;
+extern const int DGPULLDOWN2_VERSION_MAJOR;
+extern const int DGPULLDOWN2_VERSION_MINOR;
+extern const int DGPULLDOWN2_VERSION_PATCH;
+extern const char* DGPULLDOWN2_VERSION;
+extern const char* DGPULLDOWN2_VERSION_FULL;
+extern const char* DGPULLDOWN2_BUILD_HOST;
 
-#endif // DGPULLDOWN_VERSION_H
+#endif // DGPULLDOWN2_VERSION_H
 

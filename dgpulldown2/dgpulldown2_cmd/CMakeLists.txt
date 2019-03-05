@@ -23,14 +23,13 @@ endif()
 # if no build type specified default to release
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release"
-            CACHE "Build type: Debug, Release, RelWithDebInfo or MinSizeRel" STRING
-            FORCE)
+            CACHE "Build type: Debug, Release, RelWithDebInfo or MinSizeRel" STRING FORCE)
 endif()
 
 # append cmake/modules to MAKE_MODULE_PATH variable
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
 
-project("dgpulldown" LANGUAGES C)
+project("dgpulldown2" LANGUAGES C)
 
 # setup version number
 include(GetGitRevisionDescription)
@@ -42,21 +41,21 @@ if (VERSION MATCHES "HEAD-HASH-NOTFOUND")
     set(VERSION "v0.0-0-gmissing")
 endif()
 message("git version   : ${VERSION}")
-string(REGEX REPLACE "^v([0-9]+)\\..*" "\\1" DGPULLDOWN_VERSION_MAJOR "${VERSION}")
-string(REGEX REPLACE "^v[0-9]+\\.([0-9]+).*" "\\1" DGPULLDOWN_VERSION_MINOR "${VERSION}")
-string(REGEX REPLACE "^v[0-9]+\\.[0-9]+\\-([0-9]+)-.*" "\\1" DGPULLDOWN_VERSION_PATCH "${VERSION}")
-set(DGPULLDOWN_VERSION_TWEAK 0)
-string(REGEX REPLACE "^v[0-9]+\\.[0-9]+\\-[0-9]+-(.*)" "\\1" DGPULLDOWN_VERSION_SHA1 "${VERSION}")
-set(DGPULLDOWN_VERSION "${DGPULLDOWN_VERSION_MAJOR}.${DGPULLDOWN_VERSION_MINOR}.${DGPULLDOWN_VERSION_PATCH}.${DGPULLDOWN_VERSION_TWEAK}")
-set(DGPULLDOWN_VERSION_FULL "${DGPULLDOWN_VERSION_MAJOR}.${DGPULLDOWN_VERSION_MINOR}.${DGPULLDOWN_VERSION_PATCH}.${DGPULLDOWN_VERSION_TWEAK} ${DGPULLDOWN_VERSION_SHA1}")
-message("dgpulldown version:  ${DGPULLDOWN_VERSION}")
-message("dgpulldown version:  ${DGPULLDOWN_VERSION_FULL}")
-cmake_host_system_information(RESULT DGPULLDOWN_BUILD_HOST QUERY HOSTNAME)
+string(REGEX REPLACE "^v([0-9]+)\\..*" "\\1" DGPULLDOWN2_VERSION_MAJOR "${VERSION}")
+string(REGEX REPLACE "^v[0-9]+\\.([0-9]+).*" "\\1" DGPULLDOWN2_VERSION_MINOR "${VERSION}")
+string(REGEX REPLACE "^v[0-9]+\\.[0-9]+\\-([0-9]+)-.*" "\\1" DGPULLDOWN2_VERSION_PATCH "${VERSION}")
+set(DGPULLDOWN2_VERSION_TWEAK 0)
+string(REGEX REPLACE "^v[0-9]+\\.[0-9]+\\-[0-9]+-(.*)" "\\1" DGPULLDOWN2_VERSION_SHA1 "${VERSION}")
+set(DGPULLDOWN2_VERSION "${DGPULLDOWN2_VERSION_MAJOR}.${DGPULLDOWN2_VERSION_MINOR}.${DGPULLDOWN2_VERSION_PATCH}.${DGPULLDOWN2_VERSION_TWEAK}")
+set(DGPULLDOWN2_VERSION_FULL "${DGPULLDOWN2_VERSION_MAJOR}.${DGPULLDOWN2_VERSION_MINOR}.${DGPULLDOWN2_VERSION_PATCH}.${DGPULLDOWN2_VERSION_TWEAK} ${DGPULLDOWN2_VERSION_SHA1}")
+message("dgpulldown version:  ${DGPULLDOWN2_VERSION}")
+message("dgpulldown version:  ${DGPULLDOWN2_VERSION_FULL}")
+cmake_host_system_information(RESULT DGPULLDOWN2_BUILD_HOST QUERY HOSTNAME)
 
 # setup version number in application
 configure_file (
-        "${CMAKE_CURRENT_SOURCE_DIR}/src/dgpulldown_version.c.in"
-        "${CMAKE_CURRENT_SOURCE_DIR}/src/dgpulldown_version.c"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/dgpulldown2_version.c.in"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/dgpulldown2_version.c"
 )
 
 # Visual Studio project generator x64 check
@@ -132,7 +131,7 @@ endif()
 #    endif ()
 #endif ()
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${DGPULLDOWN_C_FLAGS}")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${DGPULLDOWN2_C_FLAGS}")
 message("CMAKE_BUILD_TYPE: " ${CMAKE_BUILD_TYPE})
 message("CMAKE_C_FLAGS: " ${CMAKE_C_FLAGS})
 message("CMAKE_C_FLAGS_RELEASE: " ${CMAKE_C_FLAGS_RELEASE})
@@ -143,25 +142,25 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
-add_executable(dgpulldown  "src/dgpulldown.c" "src/dgpulldown_version.c" "src/argparse.c" "src/av_log.c" "src/getMemorySize.c")
+add_executable(dgpulldown  "src/dgpulldown2.c" "src/dgpulldown2_version.c" "src/argparse.c" "src/av_log.c" "src/getMemorySize.c")
 set_target_properties(dgpulldown PROPERTIES C_STANDARD 11)
 set_target_properties(dgpulldown PROPERTIES C_STANDARD_REQUIRED ON)
 set_target_properties(dgpulldown PROPERTIES C_EXTENSIONS ON)
 
 
 # Configure CPack
-set(CPACK_PACKAGE_NAME "dgpulldown")
-set(CPACK_PACKAGE_VENDOR "TheFoundation")
+set(CPACK_PACKAGE_NAME "dgpulldown2")
+set(CPACK_PACKAGE_VENDOR "dgpulldown2")
 #set(CPACK_PACKAGE_DIRECTORY "")
-set(CPACK_PACKAGE_VERSION_MAJOR ${DGPULLDOWN_VERSION_MAJOR})
-set(CPACK_PACKAGE_VERSION_MINOR ${DGPULLDOWN_VERSION_MINOR})
-set(CPACK_PACKAGE_VERSION_PATCH ${DGPULLDOWN_VERSION_PATCH})
+set(CPACK_PACKAGE_VERSION_MAJOR ${DGPULLDOWN2_VERSION_MAJOR})
+set(CPACK_PACKAGE_VERSION_MINOR ${DGPULLDOWN2_VERSION_MINOR})
+set(CPACK_PACKAGE_VERSION_PATCH ${DGPULLDOWN2_VERSION_PATCH})
 set(CPACK_PACKAGE_DESCRIPTION "Mpeg2 Pulldown Tool")
 #set(CPACK_PACKAGE_DESCRIPTION_FILE "")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "it fixes stuff")
 set(CPACK_PACKAGE_HOMEPAGE_URL "")
 #set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${CPACK_SYSTEM_NAME}")
-set(CPACK_PACKAGE_INSTALL_DIRECTORY "dgpulldown")  # for installer
+set(CPACK_PACKAGE_INSTALL_DIRECTORY "dgpulldown2")  # for installer
 #set(CPACK_PACKAGE_ICON "")
 set(CPACK_PACKAGE_CHECKSUM "SHA256") # MD5/SHA1/SHA224/SHA256/SHA384/SHA512/SHA3_224/SHA3_256/SHA3_384/SHA3_512
 #set(CPACK_RESOURCE_FILE_LICENSE "")  # used by installer
@@ -184,7 +183,7 @@ set(CPACK_STRIP_FILES TRUE)  # strip all files
 #set(CPACK_SOURCE_IGNORE_FILES "/\\.idea/;/\\.vs/;;")
 
 # Adv
-set(CPACK_PACKAGE_VERSION ${DGPULLDOWN_VERSION})
+set(CPACK_PACKAGE_VERSION ${DGPULLDOWN2_VERSION})
 include(CPack)
 
 #message("Supported features = ${CMAKE_CXX_COMPILE_FEATURES}")
