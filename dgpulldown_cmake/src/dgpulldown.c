@@ -58,6 +58,7 @@
 #include "av_log.h"
 #include "dgpulldown_version.h"
 
+
  // these macros help with cross-platform
 #ifdef __MINGW32__
 #undef fseeko
@@ -78,6 +79,7 @@ static const char *const usage[] = {
 
 // functions
 void KillThread(void);
+size_t getMemorySize( );  // define getMemorySize from getMemorySize.c
 
 // file variables
 char *input_filename;
@@ -106,28 +108,33 @@ char HH[255] = { 0 }, MM[255] = { 0 }, SS[255] = { 0 }, FF[255] = { 0 };
 int tff = 1;
 
 // io buffer variables
-#define BUFFER_SIZE_1MB 1048576        //    1MB
-#define BUFFER_SIZE_16MB 16777216      //   16MB
-#define BUFFER_SIZE_64MB 67108864      //   64MB
-#define BUFFER_SIZE_128MB 134217728    //  128MB
-#define BUFFER_SIZE_256MB 268435456    //  256MB
-#define BUFFER_SIZE_512MB 536870912    //  512MB
-#define BUFFER_SIZE_1024MB 1073741824  // 1024MB
-#define BUFFER_SIZE_1536MB 1610612736  // 1536MB
-#define BUFFER_SIZE_1800MB 1887436800  // 1800MB
+#define BUFFER_SIZE_1MB (int64_t) 1048576        //    1MB
+#define BUFFER_SIZE_16MB (int64_t) 16777216      //   16MB
+#define BUFFER_SIZE_64MB (int64_t) 67108864      //   64MB
+#define BUFFER_SIZE_128MB (int64_t) 134217728    //  128MB
+#define BUFFER_SIZE_256MB (int64_t) 268435456    //  256MB
+#define BUFFER_SIZE_512MB (int64_t) 536870912    //  512MB
+#define BUFFER_SIZE_1024MB (int64_t) 1073741824  // 1024MB
+#define BUFFER_SIZE_1536MB (int64_t) 1610612736  // 1536MB
+//#define BUFFER_SIZE_1800MB 1887436800  // 1800MB
+#define BUFFER_SIZE_1800MB (int64_t) 3774873600  // 1800MB
+
+size_t system_memory = 0;
+size_t system_memory_usable = 0;
+size_t max_buffer_size = 0;
 
 // read buffer
-int read_buffer_size = BUFFER_SIZE_1800MB;
+size_t read_buffer_size = BUFFER_SIZE_1800MB;
 unsigned char *read_buffer = NULL;
 unsigned char *read_ptr = NULL;
-int read_cnt;
-int read_used;
+uint64_t read_cnt = 0;
+uint64_t read_used = 0;
 
 // write buffer
-int write_buffer_size = BUFFER_SIZE_1800MB;
+size_t write_buffer_size = BUFFER_SIZE_1800MB;
 unsigned char *write_buffer = NULL;
 unsigned char *write_ptr = NULL;
-int write_used;
+uint64_t write_used = 0;
 
 // field flags variables
 #define MAX_PATTERN_LENGTH 2000000
@@ -135,8 +142,8 @@ unsigned char bff_flags[MAX_PATTERN_LENGTH];
 unsigned char tff_flags[MAX_PATTERN_LENGTH];
 
 // progress bar variables
-int64_t file_size;
-int64_t data_count;
+uint64_t file_size;
+uint64_t data_count;
 unsigned int time_start, time_now, time_elapsed;
 unsigned int time_last = 0;
 unsigned int percent = 0;
@@ -157,55 +164,54 @@ int rounded_fps;
 int field_count, pict, sec, minute, hour, drop_frame;
 int set_tc;
 
+static int detect_buffer_size(void)
+{
+    system_memory = getMemorySize();
+    av_log(AV_LOG_INFO, "system memory: %d MB\n", (system_memory / 1024 / 1024));
+
+    if (system_memory == 0) {
+        // memory detect failed, use 1MB chunks
+        max_buffer_size = BUFFER_SIZE_1MB;
+    } else if (system_memory < 1073741824){
+        system_memory_usable = system_memory / 2;
+        max_buffer_size = system_memory_usable / 4;  // 1/4 of system memory per buffer, 1/2 total
+    } else {
+        system_memory_usable = (system_memory - (1073741824));
+        max_buffer_size = system_memory_usable / 2;
+    }
+
+    if (file_size == 0 || max_buffer_size == 0) {
+        av_log(AV_LOG_WARNING, "unable to determine optimal buffer size based on file size, using 1 MB buffers\n");
+        read_buffer_size = BUFFER_SIZE_1MB;
+        write_buffer_size = BUFFER_SIZE_1MB;
+    } else if (file_size <= max_buffer_size) {
+        av_log(AV_LOG_INFO, "using file size as buffer size\n");
+        read_buffer_size = file_size;
+        write_buffer_size = file_size;
+    } else {
+        av_log(AV_LOG_INFO, "file bigger than available memory, using chunked reading\n");
+        read_buffer_size = max_buffer_size;
+        write_buffer_size = max_buffer_size;
+    }
+    av_log(AV_LOG_INFO, "read buffer size : %d MB\n", (read_buffer_size / 1024 / 1024));
+    av_log(AV_LOG_INFO, "write buffer size: %d MB\n", (write_buffer_size / 1024 / 1024));
+
+    return 0;
+}
+
 static int read_buffer_init(void)
 {
     int alloc_error = 0;
 
     // allocate memory for read buffer
-    while (!read_buffer) {
-        read_buffer = malloc((size_t) read_buffer_size);
-        if (!read_buffer) {
-            switch (read_buffer_size) {
-                case BUFFER_SIZE_1800MB:
-                    read_buffer_size = BUFFER_SIZE_1536MB;
-                    break;
-                case BUFFER_SIZE_1536MB:
-                    read_buffer_size = BUFFER_SIZE_1024MB;
-                    break;
-                case BUFFER_SIZE_1024MB:
-                    read_buffer_size = BUFFER_SIZE_512MB;
-                    break;
-                case BUFFER_SIZE_512MB:
-                    read_buffer_size = BUFFER_SIZE_256MB;
-                    break;
-                case BUFFER_SIZE_256MB:
-                    read_buffer_size = BUFFER_SIZE_128MB;
-                    break;
-                case BUFFER_SIZE_128MB:
-                    read_buffer_size = BUFFER_SIZE_64MB;
-                    break;
-                case BUFFER_SIZE_64MB:
-                    read_buffer_size = BUFFER_SIZE_16MB;
-                    break;
-                case BUFFER_SIZE_16MB:
-                    read_buffer_size = BUFFER_SIZE_1MB;
-                    break;
-                default:
-                    alloc_error = 1;
-            }
-            if (alloc_error)
-                break;
-        }
-    }
-    if (alloc_error) {
+    read_buffer = malloc(read_buffer_size);
+    if (!read_buffer) {
         av_log(AV_LOG_ERROR, "error allocating read buffer\n");
         KillThread();
     }
 
-    av_log(AV_LOG_INFO, "read_buffer_size: %d MB\n", (read_buffer_size / 1024 / 1024));
-
     // zero memory buffer
-    memset(read_buffer, 0, (size_t)read_buffer_size);
+    memset(read_buffer, 0, read_buffer_size);
     // set read pointer to start of read buffer
     read_ptr = NULL;
     // reset read cnt
@@ -226,7 +232,7 @@ static int read_buffer_load(void)
         av_log(AV_LOG_INFO, "reading %d MB chunk from file\n", (read_buffer_size / 1024 / 1024));
 
     // read file into memory
-    read_cnt = (int)fread(read_buffer, 1, (size_t)read_buffer_size, input_fp);
+    read_cnt = (int)fread(read_buffer, 1, read_buffer_size, input_fp);
     if (!read_cnt) {
         // at end of file, exit
         KillThread();
@@ -249,50 +255,12 @@ static void read_buffer_free(void)
 
 static int write_buffer_init(void)
 {
-    int alloc_error = 0;
-
     // allocate memory for write buffer
-    while (!write_buffer) {
-        write_buffer = malloc((size_t) write_buffer_size);
-        if (!write_buffer) {
-            switch (write_buffer_size) {
-                case BUFFER_SIZE_1800MB:
-                    write_buffer_size = BUFFER_SIZE_1536MB;
-                    break;
-                case BUFFER_SIZE_1536MB:
-                    write_buffer_size = BUFFER_SIZE_1024MB;
-                    break;
-                case BUFFER_SIZE_1024MB:
-                    write_buffer_size = BUFFER_SIZE_512MB;
-                    break;
-                case BUFFER_SIZE_512MB:
-                    write_buffer_size = BUFFER_SIZE_256MB;
-                    break;
-                case BUFFER_SIZE_256MB:
-                    write_buffer_size = BUFFER_SIZE_128MB;
-                    break;
-                case BUFFER_SIZE_128MB:
-                    write_buffer_size = BUFFER_SIZE_64MB;
-                    break;
-                case BUFFER_SIZE_64MB:
-                    write_buffer_size = BUFFER_SIZE_16MB;
-                    break;
-                case BUFFER_SIZE_16MB:
-                    write_buffer_size = BUFFER_SIZE_1MB;
-                    break;
-                default:
-                    alloc_error = 1;
-            }
-            if (alloc_error)
-                break;
-        }
-    }
-    if (alloc_error) {
+    write_buffer = malloc(write_buffer_size);
+    if (!write_buffer) {
         av_log(AV_LOG_ERROR, "error allocating write buffer\n");
         KillThread();
     }
-
-    av_log(AV_LOG_INFO, "write_buffer_size: %d MB\n", (read_buffer_size / 1024 / 1024));
 
     // zero memory buffer
     memset(write_buffer, 0, (size_t)write_buffer_size);
@@ -310,8 +278,12 @@ static int write_buffer_flush(void)
     if (!write_buffer)
         return 1;
 
+    // check if write buffer is empty
+    if (write_used == 0)
+        return 0;
+
     if (write_buffer_size >= BUFFER_SIZE_256MB)
-        av_log(AV_LOG_INFO, "writing %d MB chunk to file\n", (write_buffer_size / 1024 / 1024));
+        av_log(AV_LOG_INFO, "writing %d MB chunk to file\n", (write_used / 1024 / 1024));
 
     // write buffer to file
     if (fwrite(write_buffer, (size_t)write_used, 1, output_fp) != 1) {
@@ -334,6 +306,22 @@ static void write_buffer_free(void)
     write_buffer = NULL;
 }
 
+static unsigned int get_time_seconds(void)
+{
+#if defined(_WIN32)  // windows
+    struct timespec spec;
+    timespec_get(&spec, TIME_UTC);
+    return (unsigned int) spec.tv_sec;
+#else  // linux and MacOS
+    unsigned int current_time = 0;
+    struct timeval spec;
+    gettimeofday(&spec, NULL);
+    current_time = (unsigned int)spec.tv_sec;
+    current_time = current_time;  // tv_sec on linux returns msec
+    return current_time;
+#endif
+}
+
 void KillThread(void)
 {
     // free + close vars
@@ -351,25 +339,11 @@ void KillThread(void)
         output_fp = NULL;
     }
 
-    av_log(AV_LOG_INFO, "Done.\n");
+    time_now = get_time_seconds();
+    av_log(AV_LOG_INFO, "Done - took: %d seconds\n", (time_now - time_start));
     exit(0);
 }
 
-static unsigned int get_time_seconds(void)
-{
-#if defined(_WIN32)  // windows
-    struct timespec spec;
-    timespec_get(&spec, TIME_UTC);
-    return (unsigned int) spec.tv_sec;
-#else  // linux and MacOS
-    unsigned int current_time = 0;
-    struct timeval spec;
-    gettimeofday(&spec, NULL);
-    current_time = (unsigned int)spec.tv_sec;
-    current_time = current_time * 1000;  // tv_sec on linux returns msec
-    return current_time;
-#endif
-}
 
 inline static void put_byte(unsigned char val)
 {
@@ -895,7 +869,7 @@ static void generate_flags(void)
 
 static int process(void)
 {
-    int tmp_buffer_size;
+    size_t tmp_buffer_size;
     F = 0;
     field_count = 0;
     pict = 0;
@@ -954,34 +928,8 @@ static int process(void)
         KillThread();
     }
 
-    // try to reduce the io buffer size if the file is not that big
-    if (file_size > BUFFER_SIZE_1536MB) {
-        read_buffer_size = BUFFER_SIZE_1800MB;
-        write_buffer_size = BUFFER_SIZE_1800MB;
-    } else if ((file_size > BUFFER_SIZE_1024MB) && (file_size <= BUFFER_SIZE_1536MB)) {
-        read_buffer_size = BUFFER_SIZE_1536MB;
-        write_buffer_size = BUFFER_SIZE_1536MB;
-    } else if ((file_size > BUFFER_SIZE_512MB) && (file_size <= BUFFER_SIZE_1024MB)) {
-        read_buffer_size = BUFFER_SIZE_1024MB;
-        write_buffer_size = BUFFER_SIZE_1024MB;
-    } else if ((file_size > BUFFER_SIZE_256MB) && (file_size <= BUFFER_SIZE_512MB)) {
-        read_buffer_size = BUFFER_SIZE_512MB;
-        write_buffer_size = BUFFER_SIZE_512MB;
-    } else if ((file_size > BUFFER_SIZE_128MB) && (file_size <= BUFFER_SIZE_256MB)) {
-        read_buffer_size = BUFFER_SIZE_256MB;
-        write_buffer_size = BUFFER_SIZE_256MB;
-    } else if ((file_size > BUFFER_SIZE_64MB) && (file_size <= BUFFER_SIZE_128MB)) {
-        read_buffer_size = BUFFER_SIZE_128MB;
-        write_buffer_size = BUFFER_SIZE_128MB;
-    } else if ((file_size > BUFFER_SIZE_16MB) && (file_size <= BUFFER_SIZE_64MB)) {
-        read_buffer_size = BUFFER_SIZE_64MB;
-        write_buffer_size = BUFFER_SIZE_64MB;
-    } else if ((file_size > BUFFER_SIZE_1MB) && (file_size <= BUFFER_SIZE_16MB)) {
-        read_buffer_size = BUFFER_SIZE_16MB;
-        write_buffer_size = BUFFER_SIZE_16MB;
-    }
-
     // init read and write buffers
+    detect_buffer_size();
     read_buffer_init();
     write_buffer_init();
 
