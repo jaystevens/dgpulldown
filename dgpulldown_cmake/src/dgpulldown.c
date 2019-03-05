@@ -366,14 +366,14 @@ void KillThread(void)
     exit(0);
 }
 
-static void put_byte(unsigned char *val_ptr)
+inline static void put_byte(unsigned char val)
 {
     if (!write_ptr) {
         av_log(AV_LOG_ERROR, "tried to write to buffer memory that is not initialized\n");
         KillThread();
     }
     // copy byte to write buffer
-    memcpy(write_ptr, val_ptr, 1);
+    memcpy(write_ptr, &val, 1);
     // add 1 to write used
     write_used++;
     // if at end of write buffer, flush the write buffer
@@ -386,9 +386,9 @@ static void put_byte(unsigned char *val_ptr)
     }
 }
 
-static unsigned char* get_byte()
+inline static unsigned char get_byte(void)
 {
-    unsigned char *val_ptr;
+    unsigned char val;
 
     if (!read_buffer) {
         av_log(AV_LOG_ERROR, "tried to read from buffer memory that is not initialized\n");
@@ -399,7 +399,7 @@ static unsigned char* get_byte()
         read_buffer_load();
     }
     // get value from read pointer
-    val_ptr = read_ptr;
+    val = *read_ptr;
     // add 1 to read used
     read_used++;
     // if at end of read buffer, load another chunk into read buffer
@@ -435,14 +435,12 @@ static unsigned char* get_byte()
         }
     }
 
-    return val_ptr;
+    return val;
 }
 
 static void video_parser(void)
 {
-    //unsigned char val, tc[4];
-    unsigned char *val_ptr;
-    unsigned char *tc[4];
+    unsigned char val, tc[4];
     int trf;
 
     // Inits.
@@ -455,37 +453,37 @@ static void video_parser(void)
     while(1)
     {
         // Parse for start codes.
-        val_ptr = get_byte();
-        put_byte(val_ptr);
+        val = get_byte();
+        put_byte(val);
 
         switch (state) {
             case NEED_FIRST_0:
-                if (*val_ptr == 0)
+                if (val == 0)
                     state = NEED_SECOND_0;
                 break;
             case NEED_SECOND_0:
-                if (*val_ptr == 0)
+                if (val == 0)
                     state = NEED_1;
                 else
                     state = NEED_FIRST_0;
                 break;
             case NEED_1:
-                if (*val_ptr == 1)
+                if (val == 1)
                 {
                     found = 1;
                     state = NEED_FIRST_0;
                 }
-                else if (*val_ptr != 0)
+                else if (val != 0)
                     state = NEED_FIRST_0;
                 break;
         }
         if (found == 1) {
             // Found a start code.
             found = 0;
-            val_ptr = get_byte();
-            put_byte(val_ptr);
+            val = get_byte();
+            put_byte(val);
 
-            if (*val_ptr == 0xb8) {
+            if (val == 0xb8) {
                 // GOP.
                 F += f;
                 f = 0;
@@ -502,42 +500,42 @@ static void video_parser(void)
                     minute -= (hour = minute / 60) * 60;
                     hour %= 24;
                     //now write timecode
-                    *val_ptr = drop_frame | (hour << 2) | ((minute & 0x30) >> 4);
-                    put_byte(val_ptr);
-                    *val_ptr = ((minute & 0x0f) << 4) | 0x8 | ((sec & 0x38) >> 3);
-                    put_byte(val_ptr);
-                    *val_ptr = ((sec & 0x07) << 5) | ((pict & 0x1e) >> 1);
-                    put_byte(val_ptr);
-                    *val_ptr = (*tc[3] & 0x7f) | ((pict & 0x1) << 7);
-                    put_byte(val_ptr);
+                    val = drop_frame | (hour << 2) | ((minute & 0x30) >> 4);
+                    put_byte(val);
+                    val = ((minute & 0x0f) << 4) | 0x8 | ((sec & 0x38) >> 3);
+                    put_byte(val);
+                    val = ((sec & 0x07) << 5) | ((pict & 0x1e) >> 1);
+                    put_byte(val);
+                    val = (tc[3] & 0x7f) | ((pict & 0x1) << 7);
+                    put_byte(val);
                 } else {
                     //just read timecode
-                    val_ptr = get_byte();
-                    put_byte(val_ptr);
-                    drop_frame = (*val_ptr & 0x80) >> 7;
-                    minute = (*val_ptr & 0x03) << 4;
-                    hour = (*val_ptr & 0x7c) >> 2;
-                    val_ptr = get_byte();
-                    put_byte(val_ptr);
-                    minute |= (*val_ptr & 0xf0) >> 4;
-                    sec = (*val_ptr & 0x07) << 3;
-                    val_ptr = get_byte();
-                    put_byte(val_ptr);
-                    sec |= (*val_ptr & 0xe0) >> 5;
-                    pict = (*val_ptr & 0x1f) << 1;
-                    val_ptr = get_byte();
-                    put_byte(val_ptr);
-                    pict |= (*val_ptr & 0x80) >> 7;
+                    val = get_byte();
+                    put_byte(val);
+                    drop_frame = (val & 0x80) >> 7;
+                    minute = (val & 0x03) << 4;
+                    hour = (val & 0x7c) >> 2;
+                    val = get_byte();
+                    put_byte(val);
+                    minute |= (val & 0xf0) >> 4;
+                    sec = (val & 0x07) << 3;
+                    val = get_byte();
+                    put_byte(val);
+                    sec |= (val & 0xe0) >> 5;
+                    pict = (val & 0x1f) << 1;
+                    val = get_byte();
+                    put_byte(val);
+                    pict |= (val & 0x80) >> 7;
                 }
             }
-            else if (*val_ptr == 0x00) {
+            else if (val == 0x00) {
                 // Picture.
-                val_ptr = get_byte();
-                put_byte(val_ptr);
-                ref = (*val_ptr << 2);
-                val_ptr = get_byte();
-                put_byte(val_ptr);
-                ref |= (*val_ptr >> 6);
+                val = get_byte();
+                put_byte(val);
+                ref = (val << 2);
+                val = get_byte();
+                put_byte(val);
+                ref |= (val >> 6);
                 D = F + ref;
                 f++;
                 if (D >= MAX_PATTERN_LENGTH - 1) {
@@ -545,48 +543,45 @@ static void video_parser(void)
                     KillThread();
                 }
             }
-            else if ((rate != -1) && (*val_ptr == 0xB3)) {
+            else if ((rate != -1) && (val == 0xB3)) {
                 // Sequence header.
-                val_ptr = get_byte();
-                put_byte(val_ptr);
-                val_ptr = get_byte();
-                put_byte(val_ptr);
-                val_ptr = get_byte();
-                put_byte(val_ptr);
+                val = get_byte();
+                put_byte(val);
+                val = get_byte();
+                put_byte(val);
+                val = get_byte();
+                put_byte(val);
                 // set frame rate
-                val_ptr = get_byte();
-                *val_ptr = (*val_ptr & 0xf0) | rate;
-                put_byte(val_ptr);
+                val = (get_byte() & 0xf0) | rate;
+                put_byte(val);
             }
-            else if (*val_ptr == 0xB5) {
-                val_ptr = get_byte();
-                put_byte(val_ptr);
-                if ((*val_ptr & 0xf0) == 0x80) {
+            else if (val == 0xB5) {
+                val = get_byte();
+                put_byte(val);
+                if ((val & 0xf0) == 0x80) {
                     // Picture coding extension.
-                    val_ptr = get_byte();
-                    put_byte(val_ptr);
-                    val_ptr = get_byte();
-                    put_byte(val_ptr);
+                    val = get_byte();
+                    put_byte(val);
+                    val = get_byte();
+                    put_byte(val);
                     //rewrite trf
-                    val_ptr = get_byte();
+                    val = get_byte();
                     trf = tff ? tff_flags[D] : bff_flags[D];
-                    *val_ptr &= 0x7d;
-                    *val_ptr |= (trf & 2) << 6;
-                    *val_ptr |= (trf & 1) << 1;
+                    val &= 0x7d;
+                    val |= (trf & 2) << 6;
+                    val |= (trf & 1) << 1;
                     field_count += 2 + (trf & 1);
-                    put_byte(val_ptr);
+                    put_byte(val);
                     // Set progressive frame. This is needed for RFFs to work.
-                    val_ptr = get_byte();
-                    *val_ptr = *val_ptr | 0x80;
-                    put_byte(val_ptr);
+                    val = get_byte() | 0x80;
+                    put_byte(val);
                 }
-                else if ((*val_ptr & 0xf0) == 0x10) {
+                else if ((val & 0xf0) == 0x10) {
                     // Sequence extension
                     // Clear progressive sequence. This is needed to
                     // get RFFs to work field-based.
-                    val_ptr = get_byte();
-                    *val_ptr = *val_ptr & ~0x08;
-                    put_byte(val_ptr);
+                    val = get_byte() & ~0x08;
+                    put_byte(val);
                 }
             }
         }
@@ -596,10 +591,7 @@ static void video_parser(void)
 static int determine_stream_type(void)
 {
     //int i;
-    //unsigned char val, tc[4];
-    unsigned char *val_ptr;
-    unsigned char *tc[4];
-
+    unsigned char val, tc[4];
     int state = 0, found = 0;
     int stream_type = STREAM_TYPE_ES;
 
@@ -614,56 +606,55 @@ static int determine_stream_type(void)
     field_count = -1;
     rate = -1;
     while ((field_count==-1) || (rate==-1)) {
-        val_ptr = get_byte();
+        val = get_byte();
         switch (state) {
             case NEED_FIRST_0:
-                if (*val_ptr == 0)
+                if (val == 0)
                     state = NEED_SECOND_0;
                 break;
             case NEED_SECOND_0:
-                if (*val_ptr == 0)
+                if (val == 0)
                     state = NEED_1;
                 else
                     state = NEED_FIRST_0;
                 break;
             case NEED_1:
-                if (*val_ptr == 1)
+                if (val == 1)
                 {
                     found = 1;
                     state = NEED_FIRST_0;
                 }
-                else if (*val_ptr != 0)
+                else if (val != 0)
                     state = NEED_FIRST_0;
                 break;
         }
         if (found == 1) {
             // Found a start code.
             found = 0;
-            val_ptr = get_byte();
-            if (*val_ptr == 0xba) {
+            val = get_byte();
+            if (val == 0xba) {
                 stream_type = STREAM_TYPE_PROGRAM;
                 break;
             }
-            else if (*val_ptr == 0xb8) {
+            else if (val == 0xb8) {
                 // GOP.
                 if (field_count == -1) {
                     for(pict=0; pict<4; pict++) tc[pict] = get_byte();
-                    drop_frame = (*tc[0] & 0x80) >> 7;
-                    hour = (*tc[0] & 0x7c) >> 2;
-                    minute = (*tc[0] & 0x03) << 4 | (*tc[1] & 0xf0) >> 4;
-                    sec = (*tc[1] & 0x07) << 3 | (*tc[2] & 0xe0) >> 5;
-                    pict = (*tc[2] & 0x1f) << 1 | (*tc[3] & 0x80) >> 7;
+                    drop_frame = (tc[0] & 0x80) >> 7;
+                    hour = (tc[0] & 0x7c) >> 2;
+                    minute = (tc[0] & 0x03) << 4 | (tc[1] & 0xf0) >> 4;
+                    sec = (tc[1] & 0x07) << 3 | (tc[2] & 0xe0) >> 5;
+                    pict = (tc[2] & 0x1f) << 1 | (tc[3] & 0x80) >> 7;
                     field_count = -2;
                 }
             }
-            else if (*val_ptr == 0xB3) {
+            else if (val == 0xB3) {
                 // Sequence header.
                 if (rate == -1) {
                     get_byte();
                     get_byte();
                     get_byte();
-                    val_ptr = get_byte();
-                    rate = *val_ptr & 0x0f;
+                    rate = get_byte() & 0x0f;
                 }
             }
         }
