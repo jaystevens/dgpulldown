@@ -142,7 +142,7 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
-add_executable(dgpulldown  "src/dgpulldown2.c" "src/dgpulldown2_version.c" "src/argparse.c" "src/av_log.c" "src/getMemorySize.c")
+add_executable(dgpulldown2  "src/dgpulldown2.c" "src/dgpulldown2_version.c" "src/argparse.c" "src/av_log.c" "src/getMemorySize.c")
 set_target_properties(dgpulldown PROPERTIES C_STANDARD 11)
 set_target_properties(dgpulldown PROPERTIES C_STANDARD_REQUIRED ON)
 set_target_properties(dgpulldown PROPERTIES C_EXTENSIONS ON)
