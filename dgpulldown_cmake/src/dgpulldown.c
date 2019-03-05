@@ -79,8 +79,8 @@ static const char *const usage[] = {
 
 // functions
 void KillThread(void);
-size_t getMemorySize( );  // define getMemorySize from getMemorySize.c
-size_t getMemoryFree( );  // define getMemoryFree from getMemorySize.c
+size_t getMemorySize(void);  // define getMemorySize from getMemorySize.c
+size_t getMemoryFree(void);  // define getMemoryFree from getMemorySize.c
 
 // file variables
 char *input_filename;

@@ -20,12 +20,13 @@
 #error "Unable to define getMemorySize( ) for an unknown OS."
 #endif
 
-
+size_t getMemorySize(void);
+size_t getMemoryFree(void);
 
 /**
  * Returns the size of physical memory (RAM) in bytes.
  */
-size_t getMemorySize( )
+size_t getMemorySize(void)
 {
 #if defined(_WIN32) && (defined(__CYGWIN__) || defined(__CYGWIN32__))
 	/* Cygwin under Windows. ------------------------------------ */
@@ -99,7 +100,7 @@ size_t getMemorySize( )
 /**
  * Returns the size of physical memory (RAM) in bytes.
  */
-size_t getMemoryFree( )
+size_t getMemoryFree(void)
 {
 #if defined(_WIN32) && (defined(__CYGWIN__) || defined(__CYGWIN32__))
 	/* Cygwin under Windows. ------------------------------------ */
