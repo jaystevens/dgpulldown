@@ -1,8 +1,4 @@
-# dgpulldown #
+# dgpulldown
 
-## dgpulldown2 ##
-updated faster and modern dgpulldown
-
-## dgpulldown1 ##
-collection of dgpulldown v1.x source code
+dgpulldown source code collection from around the net
 
