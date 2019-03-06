@@ -111,20 +111,11 @@ int tff = 1;
 // io buffer variables
 #define BUFFER_SIZE_1MB (int64_t) 1048576        //    1MB
 #define BUFFER_SIZE_16MB (int64_t) 16777216      //   16MB
-#define BUFFER_SIZE_64MB (int64_t) 67108864      //   64MB
-#define BUFFER_SIZE_128MB (int64_t) 134217728    //  128MB
-#define BUFFER_SIZE_256MB (int64_t) 268435456    //  256MB
-#define BUFFER_SIZE_512MB (int64_t) 536870912    //  512MB
-#define BUFFER_SIZE_1024MB (int64_t) 1073741824  // 1024MB
-#define BUFFER_SIZE_1536MB (int64_t) 1610612736  // 1536MB
-//#define BUFFER_SIZE_1800MB 1887436800  // 1800MB
-#define BUFFER_SIZE_1800MB (int64_t) 3774873600  // 1800MB
-
 
 int lowmem = 0;
 
 // read buffer
-size_t read_buffer_size = BUFFER_SIZE_1800MB;
+size_t read_buffer_size = BUFFER_SIZE_16MB;
 unsigned char *read_buffer = NULL;
 unsigned char *read_ptr = NULL;
 uint64_t read_cnt = 0;
@@ -133,7 +124,7 @@ uint64_t read_total = 0;
 uint64_t read_timer = 0;
 
 // write buffer
-size_t write_buffer_size = BUFFER_SIZE_1800MB;
+size_t write_buffer_size = BUFFER_SIZE_16MB;
 unsigned char *write_buffer = NULL;
 unsigned char *write_ptr = NULL;
 uint64_t write_used = 0;
@@ -146,9 +137,9 @@ unsigned char tff_flags[MAX_PATTERN_LENGTH];
 // progress bar variables
 uint64_t file_size;
 uint64_t data_processed;
-unsigned int time_start, time_now, time_elapsed;
-unsigned int time_last = 0;
-unsigned int percent = 0;
+unsigned int prog_time_start, prog_time_now, prog_time_elapsed;
+unsigned int prog_time_last = 0;
+unsigned int prog_percent = 0;
 
 // Defines for the start code detection state machine.
 #define NEED_FIRST_0  0
@@ -176,8 +167,8 @@ static int detect_buffer_size(void)
     if (lowmem) {
         // use low memory buffers
         av_log(AV_LOG_INFO, "lowmem mode\n");
-        read_buffer_size = BUFFER_SIZE_1MB;
-        write_buffer_size = BUFFER_SIZE_1MB;
+        read_buffer_size = BUFFER_SIZE_16MB;
+        write_buffer_size = BUFFER_SIZE_16MB;
     } else {
         system_mem_total = getMemorySize();
         av_log(AV_LOG_INFO, "system memory total: %d MB\n", (system_mem_total / 1024 / 1024));
@@ -254,7 +245,7 @@ static int read_buffer_load(void)
     if (read_total >= file_size && file_size != 0)
         KillThread();
 
-    if (read_buffer_size >= BUFFER_SIZE_256MB)
+    if (read_buffer_size > BUFFER_SIZE_16MB)
         av_log(AV_LOG_INFO, "reading %d MB chunk from file\n", (read_buffer_size / 1024 / 1024));
 
     // read file into memory
@@ -309,7 +300,7 @@ static int write_buffer_flush(void)
     if (write_used == 0)
         return 0;
 
-    if (write_buffer_size >= BUFFER_SIZE_256MB)
+    if (write_buffer_size > BUFFER_SIZE_16MB)
         av_log(AV_LOG_INFO, "writing %d MB chunk to file\n", (write_used / 1024 / 1024));
 
     // write buffer to file
@@ -340,9 +331,12 @@ static unsigned int get_time_seconds(void)
     timespec_get(&spec, TIME_UTC);
     return (unsigned int) spec.tv_sec;
 #else  // linux and MacOS
+    unsigned int current_time;
     struct timeval spec;
     gettimeofday(&spec, NULL);
-    return (unsigned int)spec.tv_sec;
+    current_time = (unsigned int)spec.tv_sec;
+    current_time = (4294967295 - current_time) / 1000;
+    return current_time;
 #endif
 }
 
@@ -363,27 +357,28 @@ void KillThread(void)
         output_fp = NULL;
     }
 
-    time_now = get_time_seconds();
-    av_log(AV_LOG_INFO, "Done - took: %d seconds\n", (time_now - time_start));
+    prog_time_now = get_time_seconds();
+    av_log(AV_LOG_INFO, "Done - took: %d seconds\n", (prog_time_now - prog_time_start));
     exit(0);
 }
 
-static void do_progress(void)
+inline static void do_progress(void)
 {
-    time_now = get_time_seconds();
-    if (((time_now - time_last) >= 1) && (file_size > 0)) {
-        if (time_now >= time_start)
-            time_elapsed = time_now - time_start;
-        else
-#if defined(_WIN32)
-            time_elapsed = (time_now - time_start) + 1;
-#else
-            time_elapsed = (unsigned int) (((4294967295 - time_start) + time_now + 1) / 1000);
-#endif
-        time_last = time_now;
-        percent = (unsigned int) (data_processed * 100 / file_size);
-        av_log(AV_LOG_INFO, "%02d%% %7d input frames : output time %02d:%02d:%02d%c%02d @ %6.3f [elapsed %d sec]\n",
-               percent, F, hour, minute, sec, (drop_frame ? ',' : '.'), pict, tfps, time_elapsed);
+    // only run progress code every 1 MB [1048576] - the time syscall is slow
+    if (read_timer > 1048576) {
+        read_timer = 0;
+        prog_time_now = get_time_seconds();
+        if (((prog_time_now - prog_time_last) >= 1) && (file_size > 0)) {
+            if (prog_time_now >= prog_time_start) {
+                prog_time_elapsed = prog_time_now - prog_time_start;
+            } else {
+                prog_time_elapsed = (prog_time_now - prog_time_start) + 1;
+            }
+            prog_time_last = prog_time_now;
+            prog_percent = (unsigned int) (data_processed * 100 / file_size);
+            av_log(AV_LOG_INFO, "%02d%% %7d input frames : output time %02d:%02d:%02d%c%02d @ %6.3f [elapsed %d sec]\n",
+                   prog_percent, F, hour, minute, sec, (drop_frame ? ',' : '.'), pict, tfps, prog_time_elapsed);
+        }
     }
 }
 
@@ -438,10 +433,7 @@ inline static unsigned char get_byte(void)
     // increment read timer
     read_timer++;
     // only run progress code every 1MB [1048576] - the time syscall is slow
-    if (read_timer > 1048576) {
-        read_timer = 0;
-        do_progress();
-    }
+    do_progress();
 
     return val;
 }
@@ -958,7 +950,7 @@ static int process(void)
     minute = 0;
     hour = 0;
     drop_frame = 0;
-    time_start = get_time_seconds();
+    prog_time_start = get_time_seconds();
 
     av_log(AV_LOG_INFO, "Processing, please wait...\n");
 
