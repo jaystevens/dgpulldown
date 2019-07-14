@@ -22,7 +22,7 @@
     <ProjectGuid>{3D60F5AB-A0B0-4BF0-A172-47F308B135FB}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>dgpulldown_cmdonly</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.16299.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.18362.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
