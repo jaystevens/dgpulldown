@@ -1,0 +1,146 @@
+//Microsoft Developer Studio generated resource script.
+//
+#include "resource.h"
+
+#define APSTUDIO_READONLY_SYMBOLS
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 2 resource.
+//
+#ifndef __BORLANDC__
+#include "winres.h"
+#endif
+
+/////////////////////////////////////////////////////////////////////////////
+#undef APSTUDIO_READONLY_SYMBOLS
+
+/////////////////////////////////////////////////////////////////////////////
+// English (U.S.) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
+#ifdef _WIN32
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+#pragma code_page(1252)
+#endif //_WIN32
+
+#ifdef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// TEXTINCLUDE
+//
+
+1 TEXTINCLUDE MOVEABLE PURE 
+BEGIN
+    "resource.h\0"
+END
+
+2 TEXTINCLUDE MOVEABLE PURE 
+BEGIN
+    "#ifndef __BORLANDC__\r\n"
+    "#include ""winres.h""\r\n"
+    "#endif\r\n"
+    "\0"
+END
+
+3 TEXTINCLUDE MOVEABLE PURE 
+BEGIN
+    "\0"
+END
+
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Icon
+//
+
+// Icon with lowest ID value placed first to ensure application icon
+// remains consistent on all systems.
+IDD_ICON                ICON    DISCARDABLE     "movie.ico"
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog
+//
+
+IDD_MAIN DIALOGEX 0, 0, 381, 274
+STYLE DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "DGPulldown 1.5.1"
+FONT 8, "MS Sans Serif"
+BEGIN
+    LTEXT           "&Source ES:",IDC_STATIC,6,6,61,8
+    EDITTEXT        IDC_INPUT,6,18,314,14,ES_AUTOHSCROLL,WS_EX_ACCEPTFILES
+    PUSHBUTTON      "B&rowse",IDC_BROWSE,325,18,49,14
+    CONTROL         "No change",IDC_RATE0,"Button",BS_AUTORADIOBUTTON,6,82,
+                    76,10
+    CONTROL         "23.976 --> 29.97",IDC_RATE1,"Button",BS_AUTORADIOBUTTON,
+                    6,94,76,10
+    CONTROL         "24 --> 29.97",IDC_RATE2,"Button",BS_AUTORADIOBUTTON,6,
+                    106,65,10
+    CONTROL         "25 --> 29.97",IDC_RATE3,"Button",BS_AUTORADIOBUTTON,6,
+                    118,65,10
+    CONTROL         "Custom:",IDC_RATE4,"Button",BS_AUTORADIOBUTTON,6,130,41,
+                    10
+    EDITTEXT        IDC_INPUT_RATE,54,131,40,14,ES_CENTER | ES_AUTOHSCROLL
+    CTEXT           "-->",IDC_STATIC,96,132,16,8
+    EDITTEXT        IDC_OUTPUT_RATE,114,131,40,14,ES_CENTER | ES_AUTOHSCROLL
+    LTEXT           "Valid MPEG2 output rates are:\n23.976, 24, 25, 29.97, 30, 50, 59.94, and 60",
+                    IDC_STATIC,160,130,214,24
+    CONTROL         "Set timecodes",IDC_TIMECODES,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,6,165,61,10
+    CONTROL         "Write timecode to text file",IDC_DEBUG,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,78,165,95,10
+    CONTROL         "Set drop frames (requires Set timecodes to be checked)",
+                    IDC_DROPFRAMES,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,6,
+                    177,191,10
+    CONTROL         "Set start time (HH:MM:SS FF)",IDC_STARTTIME,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,6,189,109,10
+    EDITTEXT        IDC_HH,120,189,21,14,ES_CENTER | ES_AUTOHSCROLL | 
+                    ES_NUMBER | WS_DISABLED
+    EDITTEXT        IDC_MM,145,189,21,14,ES_CENTER | ES_AUTOHSCROLL | 
+                    ES_NUMBER | WS_DISABLED
+    EDITTEXT        IDC_SS,170,189,21,14,ES_CENTER | ES_AUTOHSCROLL | 
+                    ES_NUMBER | WS_DISABLED
+    EDITTEXT        IDC_FF,195,189,21,14,ES_CENTER | ES_AUTOHSCROLL | 
+                    ES_NUMBER | WS_DISABLED
+    CONTROL         "No output",IDC_NOOUTPUT,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,6,201,47,10
+    CONTROL         "Modify file in place (see WARNING in help file)",
+                    IDC_INPLACE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,6,214,
+                    287,10
+    PUSHBUTTON      "&Convert",IDC_CONVERT,6,231,47,14
+    EDITTEXT        IDC_STATUS,61,234,313,12,ES_READONLY | NOT WS_BORDER | 
+                    NOT WS_TABSTOP,WS_EX_TRANSPARENT
+    CONTROL         "Progress1",IDC_PROGRESS,"msctls_progress32",PBS_SMOOTH | 
+                    WS_BORDER,6,253,368,14
+    CONTROL         "Top field first",IDC_TFF,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,6,152,56,10
+    LTEXT           "&Dest ES:",IDC_STATIC,6,42,59,8
+    EDITTEXT        IDC_OUTPUT,6,53,314,14,ES_AUTOHSCROLL,WS_EX_ACCEPTFILES
+    PUSHBUTTON      "B&rowse",IDC_BROWSE_DEST,325,53,49,14
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// DESIGNINFO
+//
+
+#ifdef APSTUDIO_INVOKED
+GUIDELINES DESIGNINFO MOVEABLE PURE 
+BEGIN
+    IDD_MAIN, DIALOG
+    BEGIN
+        LEFTMARGIN, 2
+        RIGHTMARGIN, 374
+        TOPMARGIN, 6
+        BOTTOMMARGIN, 267
+    END
+END
+#endif    // APSTUDIO_INVOKED
+
+#endif    // English (U.S.) resources
+/////////////////////////////////////////////////////////////////////////////
+
+
