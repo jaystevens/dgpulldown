@@ -708,16 +708,16 @@ class dgpulldown():
 
 if __name__ == '__main__':
     bff_help = ''
-    bff_help += 'Generate a BFF (Bottom Field First) output stream. '
-    bff_help += 'If absent, a TFF (Top Field First) stream is generated. '
+    bff_help += 'Generate a Bottom Field First (BFF) output stream. '
+    bff_help += 'If absent, a Top Field First (TFF) stream is generated. '
     bff_help += 'NTSC is BFF, PAL is TFF'
     parser = argparse.ArgumentParser(description='dgpulldown(python)')
     parser.add_argument('-i', dest='input', default=None, required=True, help='File name for input file.')
     parser.add_argument('-o', dest='output', default=None, help='File name for output file, if omitted the name will be "*.pulldown.m2v".')
     parser.add_argument('-srcfps', dest='srcfps', default=None, help='Rate is any float fps value, e.g., \"23.976\" (default) or a fraction, e.g., \"30000/1001\"')
-    parser.add_argument('-destfps', dest='destfps', default=None, help='Rate is any valid mpeg2 float fps value, e.g., \"29.97\" (default). Valid rates: 23.976, 24, 25, 29.97, 30, 50, 59.94, 60"')
-    parser.add_argument('-df', dest='df', default=None, help='Force dropframes.')
-    parser.add_argument('-nodf', dest='nodf', default=None, help='Force no dropframes.')
+    parser.add_argument('-destfps', dest='destfps', default=None, help='Rate is any valid MPEG2Video float fps value, e.g., \"29.97\" (default). Valid rates: 23.976, 24, 25, 29.97, 30, 50, 59.94, 60"')
+    parser.add_argument('-df', dest='df', default=None, help='Force drop frame (DF) timecode.')
+    parser.add_argument('-nodf', dest='nodf', default=None, help='Force non drop frame (NDF) timecode.')
     parser.add_argument('-bff', dest='bff', default=None, help=bff_help)
     args = parser.parse_args()
 
