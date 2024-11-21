@@ -10,7 +10,7 @@ dgpulldown2_python will:
 - Apply a pulldown pattern
   - eg when converting from 23.976fps to 29.970fps, dgpulldown2 will apply 2:3 (Classic) pulldown.
 - Modify the frame_rate_code in the MPEG2Video Sequence Header
-  - eg when converting from 23.976fps to 29.970fps, dgpulldown2 will modify the frame_rate_code from `"1" (24000/1001)` to `"4" (30000/1001)
+  - eg when converting from 23.976fps to 29.970fps, dgpulldown2 will modify the frame_rate_code from `"1" (24000/1001)` to `"4" (30000/1001)`
 
 
 ### Usage
