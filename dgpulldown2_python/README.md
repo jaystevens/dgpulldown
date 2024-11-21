@@ -6,9 +6,9 @@ This is a work in progress.
 ### Description
 
 dgpulldown2_python will:
-- Modify the RFF/TFF flags
-- Apply a pulldown pattern
+-  Apply a pulldown pattern to a progressive source by modifying the RFF/TFF flags in accordance with [MPEG2Video/H.262][1].  Although the latest MPEG2Video/H.262 Specification is not available publicly from an official source, the ITU does make an older version of the specification freely available.
   - eg when converting from 23.976fps to 29.970fps, dgpulldown2 will apply 2:3 (Classic) pulldown.
+-  The input must be an MPEG2Video elementary stream.  The output will be an MPEG2Video elementary stream.  The common file extension for a MPEG2Video elementary stream is m2v.  MPEG2Video elementary streams are sometime referred to as 'raw MPEG2 Video'.
 - Modify the frame_rate_code in the MPEG2Video Sequence Header
   - eg when converting from 23.976fps to 29.970fps, dgpulldown2 will modify the frame_rate_code from `"1" (24000/1001)` to `"4" (30000/1001)`
 
@@ -77,10 +77,10 @@ MPEG2Video (m2v) Headers can be inspected with [VTCLab Media Analyzer](https://m
 - MPEGVideo Picture Header
 - MPEGVideo Picture Coding Extension
 
-Although the latest MPEG2Video/H.262 Specification is not available publicly from an official source, the ITU does make an older version of the specification freely available from [https://www.itu.int/rec/T-REC-H.262-200002-S/en](https://www.itu.int/rec/T-REC-H.262-200002-S/en)
-
-
-## Copyright & Credit
+### Copyright & Credit
 
 Repository: [https://github.com/jaystevens/dgpulldown](https://github.com/jaystevens/dgpulldown)
 Copyright(c): 2016 Jason Stevens
+
+[1]: https://www.itu.int/rec/T-REC-H.262-200002-S/en
+
