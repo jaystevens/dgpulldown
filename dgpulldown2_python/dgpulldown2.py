@@ -436,7 +436,7 @@ class dgpulldown():
                         # rewrite trf
                         #trf = tff ? tff_flags[D] :  bff_flags[D]
                         print('D value: {}'.format(D))
-                        if self.tff is 1:
+                        if self.tff == 1:
                             trf = self.tff_flags[D]
                         else:
                             trf = self.bff_flags[D]
