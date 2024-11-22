@@ -497,7 +497,8 @@ class dgpulldown():
         while (self.field_count == -1) or (self.rate == -1):
             #print('position: %s' % ((self.input_fd_pos - self.input_buffer.getbuffer().nbytes) + self.input_buffer_pos))
             print('pos: %s' % self.input_pos)
-            if self.input_pos > 25:
+            if self.input_pos > 50:  # previously 25, increase to 50 because some dumb ass tried to use this with bitstreams with 'colorspace' information
+                print('could not determine stream type, exiting!!')
                 sys.exit(1)
             val = self.__get_byte()
             print('val: %s' % val)
